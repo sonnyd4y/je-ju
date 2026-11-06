@@ -1,0 +1,19 @@
+﻿id,우선순위,데이터명,검색어,제공형태,이용승인,파일명,크기MB,용도,상세페이지,저장위치
+780,P1 필수,제주특별자치도 음식점 목록(통합),음식점 목록,파일,필요,제주특별자치도음식점목록(통합)_인허가일에따른영업및폐업음식점수.csv | 제주특별자치도음식점목록(통합).csv,8.9,가게 기준 DB (인허가일자·폐업·주소),https://jejudatahub.net/data/view/data/780,data/raw/780/
+781,P2,제주특별자치도 음식점 목록(일반 음식점),일반 음식점,파일,필요,제주특별자치도음식점목록(일반음식점).csv,6.5,일반음식점 상세 (780 보조),https://jejudatahub.net/data/view/data/781,data/raw/781/
+782,P2,제주특별자치도 음식점 목록(휴게 음식점),휴게 음식점,파일,필요,제주특별자치도음식점목록(휴게음식점).csv,2.4,휴게음식점(카페 등) 상세 (780 보조),https://jejudatahub.net/data/view/data/782,data/raw/782/
+583,P1,읍면동 단위 내국인 유동인구,내국인 유동인구,API,필요,(API 신청 또는 미리보기 CSV),0.0,읍면동 거주/근무/방문 인구 → 과밀도·상권 인사이트,https://jejudatahub.net/data/view/data/583,data/raw/583/
+568,P1,와이파이 장소별 사용자 현황,와이파이 장소별,파일,필요,와이파이장소별사용자현황.csv,97.1,와이파이 장소별 사용자 → 장소 혼잡 패턴,https://jejudatahub.net/data/view/data/568,data/raw/568/
+569,P3 선택,와이파이 장소별 방문자별 사용량,와이파이 장소별,파일,필요,와이파이장소별방문자별사용량.csv,500.9,"와이파이 방문자별 사용량 (500MB, 필요 시)",https://jejudatahub.net/data/view/data/569,data/raw/569/
+591,P1,관광지별 내국인 유입자 수,유입자,API,필요,(API 신청 또는 미리보기 CSV),0.0,관광지별 내국인 유입자 (월별),https://jejudatahub.net/data/view/data/591,data/raw/591/
+592,P2,관광지별 외국인 유입자 수,유입자,API,필요,(API 신청 또는 미리보기 CSV),0.0,관광지별 외국인 유입자 (월별),https://jejudatahub.net/data/view/data/592,data/raw/592/
+502,P1,시간대별 카드 이용금액 현황,카드 이용금액,파일,필요,시간대별카드이용금액현황.csv,0.3,시간대별 카드 이용금액 → 시간대 계수,https://jejudatahub.net/data/view/data/502,data/raw/502/
+504,P1,요일별 카드 이용 건수 비교,요일별 카드,파일,필요,요일별카드이용건수비교.csv,0.4,요일별 카드 이용건수 → 요일 계수,https://jejudatahub.net/data/view/data/504,data/raw/504/
+490,P1,시간대별 외식업 이용자수,외식업,파일,필요,시간대별 외식업 이용자수.csv,0.1,시간대별 외식업 이용자수 → 식당 시간대 패턴,https://jejudatahub.net/data/view/data/490,data/raw/490/
+495,P2,메뉴별 외식업 매출액,외식업,파일,필요,메뉴별외식업매출액.csv,0.0,메뉴별 외식업 매출 → 지역 인기 메뉴,https://jejudatahub.net/data/view/data/495,data/raw/495/
+1048,P2,업종별 성별 카드 이용 정보,성별 카드,파일,필요,업종별성별카드이용정보.csv,2.0,업종별 성별 카드 이용 → 손님 구성,https://jejudatahub.net/data/view/data/1048,data/raw/1048/
+903,P1,구글 음식점리뷰 원천데이터,구글 음식점,파일,불필요,10개 식당별 CSV (zz_bigdata3_*.csv),1.6,구글 음식점 리뷰 원천 → 리뷰 분석 개발용,https://jejudatahub.net/data/view/data/903,data/raw/903/
+906,P2,구글 음식점 리뷰 분석 데이터 (+보고서),구글 음식점,파일,불필요,NXE_3rd_ORIGIN_NXEGGRESTRTAL_20210101000000.csv | 구글 리뷰 분석(리포트)_예시.xlsx,2.6,구글 리뷰 분석 데이터·리포트 → 분석 기준 참고,https://jejudatahub.net/data/view/data/906,data/raw/906/
+811,P3,오름 위치 정보,오름,API,필요,(API 신청 또는 미리보기 CSV),0.0,오름 위치 (관광객 일정 POI),https://jejudatahub.net/data/view/data/811,data/raw/811/
+784,P3,제주특별자치도 해수욕장 정보,해수욕장,파일,필요,제주특별자치도해수욕장정보.csv,0.0,해수욕장 정보 (관광객 일정 POI),https://jejudatahub.net/data/view/data/784,data/raw/784/
+837,P3,관광 숙박업 정보,숙박업,API,필요,(API 신청 또는 미리보기 CSV),0.0,관광 숙박업 (관광객 일정 POI),https://jejudatahub.net/data/view/data/837,data/raw/837/
