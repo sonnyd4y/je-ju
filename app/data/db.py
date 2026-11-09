@@ -21,6 +21,8 @@ def connect() -> sqlite3.Connection:
         )
     con = sqlite3.connect(DB_PATH, check_same_thread=False, timeout=30)  # 동시 쓰기 시 잠금 대기
     con.row_factory = sqlite3.Row
+    # WAL: 읽는 프로세스와 쓰는 프로세스가 동시에 있어도 안전 (11/09 동시 쓰기로 DB 손상 → 재발 방지)
+    con.execute("PRAGMA journal_mode=WAL")
     return con
 
 

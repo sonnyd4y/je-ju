@@ -190,8 +190,11 @@ def check_store(store: dict) -> dict:
     return row
 
 
+_write_lock = __import__("threading").Lock()
+
+
 def save(row: dict):
-    with db.connect() as con:
+    with _write_lock, db.connect() as con:  # 여러 스레드가 동시에 쓰지 않게
         con.execute(DDL)
         con.execute(
             f"INSERT OR REPLACE INTO naver_check ({','.join(row)}) VALUES ({','.join('?' * len(row))})",

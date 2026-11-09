@@ -25,6 +25,11 @@ load_dotenv(ROOT / ".env")
 log = logging.getLogger(__name__)
 
 MODEL = os.getenv("CLAUDE_MODEL", "claude-opus-5-5")
+# 사용자 유형별 모델 (비용 조절용). 비우면 CLAUDE_MODEL
+MODEL_BY_MODE = {
+    "owner": os.getenv("CLAUDE_MODEL_OWNER", "").strip(),
+    "tourist": os.getenv("CLAUDE_MODEL_TOURIST", "").strip(),
+}
 EFFORT = os.getenv("CLAUDE_EFFORT", "medium")
 MAX_TURNS = 12          # 한 질문에 도구를 오가는 최대 횟수
 MAX_JSON_RETRIES = 2
@@ -99,7 +104,7 @@ async def run(session: Session, text: str, image: bytes | None = None, media_typ
         # 화면에서 알려준 사용자 유형은 대화 중 시스템 메시지로 전달 (첫 사용자 메시지 바로 뒤)
         session.messages.append({"role": "system", "content": prompts.MODE_HINT[session.mode]})
 
-    model = model or MODEL
+    model = model or MODEL_BY_MODE.get(session.mode) or MODEL
     extra = {"betas": [FALLBACK_BETA], "fallbacks": "default"} if model in FALLBACK_MODELS else {}
     json_retries = 0
     for _ in range(MAX_TURNS):

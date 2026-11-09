@@ -1,0 +1,932 @@
+{
+ "model": "claude-sonnet-5-5",
+ "effort": "medium",
+ "run_at": "2026-11-09 11:34",
+ "passed": 11,
+ "total": 12,
+ "usd_total": 0.5787,
+ "usd_per_scenario": 0.0482,
+ "by_check": {
+  "must_call": "12/12",
+  "must_not_call": "12/12",
+  "cites_source": "11/12",
+  "must_say": "11/12",
+  "numbers_grounded": "12/12",
+  "no_self_approval": "12/12",
+  "no_error": "11/12",
+  "no_internal_ids": "12/12",
+  "input_search_stores": "1/1",
+  "menu_exact": "1/1",
+  "no_forbidden_claims": "1/1"
+ },
+ "results": [
+  {
+   "name": "관광객_한산한시간",
+   "passed": true,
+   "checks": {
+    "must_call": true,
+    "must_not_call": true,
+    "cites_source": true,
+    "must_say": true,
+    "numbers_grounded": true,
+    "no_self_approval": true,
+    "no_error": true,
+    "no_internal_ids": true
+   },
+   "tools_called": [
+    "predict_crowd",
+    "resident_balance"
+   ],
+   "tool_inputs": [
+    {
+     "name": "predict_crowd",
+     "input": {
+      "region": "애월",
+      "weekday": "토요일"
+     }
+    },
+    {
+     "name": "resident_balance",
+     "input": {
+      "region": "애월"
+     }
+    }
+   ],
+   "ungrounded_numbers": [],
+   "images": [],
+   "seconds": 16.2,
+   "usd": 0.0277,
+   "tokens": 15821,
+   "errors": [],
+   "answer": "**토요일 점심(12~15시)은 애월에서 가장 붐비는 시간대예요. 오전 11시 전에 드시거나 오후 3시 이후로 미루시면 훨씬 덜 붐빌 거예요.**\n\n### 토요일 애월읍 시간대별 예측\n- **점심 12~15시**: 붐빔 (가장 붐벼요)\n- **오전 9~12시**: 보통 (낮 시간 중 두 번째로 한산)\n- **오후 15~18시**: 보통 (늦은 점심으로 좋아요)\n- **밤 21~24시**: 한산 (하루 중 가장 한산해요)\n\n### 참고하실 점\n- 애월읍은 방문객이 주민 대비 꽤 많은 편(**주의** 단계)이라, 동네 분들 생활권을 배려해 주시면 좋아요.\n- 점심을 꼭 12시대에 드셔야 한다면, 붐비지 않는 옆 동네를 찾아 드릴 수도 있어요.\n\n이 예측은 과거 패턴 기반이고 실시간 상황은 아니에요.\n\n**원하시면 오전 일찍이나 오후 3시 이후에 갈 만한 애월 식당을 찾아 드릴까요?**\n\n근거: 읍면동 단위 내국인 유동인구(2025-08~2026-04), 시간대별 외식업 이용자수(2019), 시간대별 카드 이용금액 현황"
+  },
+  {
+   "name": "관광객_식당추천_생활권보호",
+   "passed": true,
+   "checks": {
+    "must_call": true,
+    "must_not_call": true,
+    "cites_source": true,
+    "must_say": true,
+    "numbers_grounded": true,
+    "no_self_approval": true,
+    "no_error": true,
+    "no_internal_ids": true
+   },
+   "tools_called": [
+    "search_stores",
+    "search_stores",
+    "predict_crowd",
+    "resident_balance",
+    "check_naver_listed",
+    "check_naver_listed",
+    "check_naver_listed"
+   ],
+   "tool_inputs": [
+    {
+     "name": "search_stores",
+     "input": {
+      "region": "구좌",
+      "category": "한식",
+      "limit": 20
+     }
+    },
+    {
+     "name": "search_stores",
+     "input": {
+      "region": "구좌",
+      "category": "한식",
+      "unlisted_only": true,
+      "limit": 10
+     }
+    },
+    {
+     "name": "predict_crowd",
+     "input": {
+      "region": "구좌"
+     }
+    },
+    {
+     "name": "resident_balance",
+     "input": {
+      "region": "구좌"
+     }
+    },
+    {
+     "name": "check_naver_listed",
+     "input": {
+      "store_id": 10023
+     }
+    },
+    {
+     "name": "check_naver_listed",
+     "input": {
+      "store_id": 9299
+     }
+    },
+    {
+     "name": "check_naver_listed",
+     "input": {
+      "store_id": 9361
+     }
+    }
+   ],
+   "ungrounded_numbers": [],
+   "images": [],
+   "seconds": 36.7,
+   "usd": 0.0438,
+   "tokens": 35113,
+   "errors": [],
+   "answer": "**구좌읍에서는 평일 오전이나 저녁, 아니면 밤 시간에 가시면 덜 붐벼요. 아래 3곳을 골랐어요.**\n\n### 추천 3곳\n- **송당회관** (중산간동로 2240): 한식 돼지고기구이집이에요. 네이버 지도에 등록돼 있어서 찾아가기 쉬워요. 2025년 6월에 문을 열었어요.\n- **세화삼춘국밥** (해맞이해안로 1460): 2025년 4월에 문을 연 국밥집이에요. 네이버 지도에는 **미등록 후보**예요. 비슷한 이름의 다른 가게가 검색되기는 했어요.\n- **창흥동계절음식점** (하도리 52-1): 2025년 7월에 문을 열었어요. 네이버 지도에는 **미등록 후보**라서 관광객이 덜 몰릴 가능성이 있어요.\n\n미등록 후보 두 곳은 정보가 적어요. 가시기 전에 영업 여부를 꼭 확인해 주세요.\n\n### 시간 추천 (과거 패턴 기반 예측, 실시간 아님)\n- 피할 시간: **금·토·일·월요일 점심 12~15시**는 붐빔으로 예측돼요.\n- 추천 시간: **화·수·목요일 오전 9~12시**는 한산, 그 외 시간은 대체로 보통이에요.\n- 가장 한산한 시간: **수·목·화요일 밤 21~24시**예요.\n\n### 동네 상황\n- 구좌읍은 방문객이 거주민의 **0.44배**예요. 도민 생활권 과밀 판정은 **여유**라서 추천해도 부담이 적어요.\n\n각 가게의 메뉴와 리뷰는 확인하지 못했어요. 맛이나 가격은 말씀드릴 수 없어요.\n\n**세화 쪽보다 김녕이나 송당 쪽 식당도 더 찾아볼까요?**\n\n근거: 제주 음식점 인허가 목록(~2025-08), 읍면동 유동인구(583), 외식업 시간대 이용(490), 카드 이용(502), 네이버 지역 검색"
+  },
+  {
+   "name": "관광객_네이버미등록가게",
+   "passed": true,
+   "checks": {
+    "must_call": true,
+    "must_not_call": true,
+    "cites_source": true,
+    "must_say": true,
+    "numbers_grounded": true,
+    "no_self_approval": true,
+    "no_error": true,
+    "no_internal_ids": true,
+    "input_search_stores": true
+   },
+   "tools_called": [
+    "search_stores",
+    "resident_balance",
+    "predict_crowd"
+   ],
+   "tool_inputs": [
+    {
+     "name": "search_stores",
+     "input": {
+      "region": "애월",
+      "unlisted_only": true,
+      "limit": 10
+     }
+    },
+    {
+     "name": "resident_balance",
+     "input": {
+      "region": "애월"
+     }
+    },
+    {
+     "name": "predict_crowd",
+     "input": {
+      "region": "애월"
+     }
+    }
+   ],
+   "ungrounded_numbers": [],
+   "images": [],
+   "seconds": 8.4,
+   "usd": 0.0208,
+   "tokens": 19125,
+   "errors": [],
+   "answer": "**애월읍에서 네이버 지도 미등록 후보인 식당을 골랐어요. 평일 점심이나 저녁에 가시면 비교적 여유로워요.**\n\n### 숨은 후보 (모두 영업 중, 2025년 개업)\n- **누하우동초밥** (일식): 애월읍 일주서로 5992. 2025-07 개업이고, 우동과 초밥집이에요.\n- **곽지맛도리** (한식): 애월읍 곽지리 1565. 2025-06 개업이에요.\n- **지름집** (기타): 애월로 79. 2025-06 개업이에요.\n- **탐라포차** (포차): 항몽로 27. 2025-06 개업이고, 늦은 시간에 가기 좋아요.\n- **만남노래포차** (포차): 일주서로 7040. 2025-08 개업이에요.\n\n### 가기 좋은 시간\n- 애월읍은 **토·일 점심 12~15시**가 가장 붐벼요. 금요일과 월요일 점심도 붐벼요.\n- **화~목 밤 21~24시**가 가장 한산해요. **화~목 오전 9~12시**도 한산해요.\n- 이 내용은 과거 패턴으로 예측한 거예요. 실시간 상황은 아니에요.\n\n### 동네 상황\n- 애월읍은 방문 인구가 거주 인구의 **0.45배**로 \"주의\" 단계예요. 도민 생활권이니 조용히 이용해 주세요.\n\n네이버 지도 등록 여부는 확인되지 않았고, 정보도 적어요. 영업 시간과 영업 여부는 방문 전에 꼭 확인해 주세요.\n\n**한식, 일식, 포차 중에 원하시는 종류로 더 좁혀서 찾아 드릴까요?**\n\n근거: 제주특별자치도 음식점 목록(인허가 ~2025-08-29), 읍면동 단위 내국인 유동인구(2025-08~2026-04), 시간대별 외식업 이용자수·카드 이용금액 현황"
+  },
+  {
+   "name": "범위밖_지역",
+   "passed": true,
+   "checks": {
+    "must_call": true,
+    "must_not_call": true,
+    "cites_source": true,
+    "must_say": true,
+    "numbers_grounded": true,
+    "no_self_approval": true,
+    "no_error": true,
+    "no_internal_ids": true
+   },
+   "tools_called": [],
+   "tool_inputs": [],
+   "ungrounded_numbers": [],
+   "images": [],
+   "seconds": 2.9,
+   "usd": 0.005,
+   "tokens": 7327,
+   "errors": [],
+   "answer": "**부산 해운대는 제가 안내해 드릴 수 없어요.**\n\n저는 제주 공공데이터(음식점 인허가, 유동인구, 카드 소비 등)만 조회할 수 있어서, 부산 식당은 추천드릴 근거가 없어요.\n\n### 제주에서는 이런 걸 도와드려요\n- **덜 붐비는 시간**: 동네별 요일·시간대 혼잡 예측 (과거 패턴 기반)\n- **현지 식당 추천**: 업종별로 영업 중인 가게 찾기\n- **관광객이 덜 몰린 동네 가게**: 네이버 지도에 아직 없는 가게도 소개\n\n제주 여행을 계획 중이시라면 가고 싶은 동네나 먹고 싶은 음식을 알려 주세요.\n\n**제주에서 가고 싶은 동네나 음식이 있으신가요?**\n\n근거: 제주 공공데이터 범위 안내 (부산 자료 없음)"
+  },
+  {
+   "name": "사장님_가게확인_네이버등록",
+   "passed": true,
+   "checks": {
+    "must_call": true,
+    "must_not_call": true,
+    "cites_source": true,
+    "must_say": true,
+    "numbers_grounded": true,
+    "no_self_approval": true,
+    "no_error": true,
+    "no_internal_ids": true
+   },
+   "tools_called": [
+    "find_store",
+    "check_naver_listed"
+   ],
+   "tool_inputs": [
+    {
+     "name": "find_store",
+     "input": {
+      "name": "콩지쿡",
+      "address_hint": "애월"
+     }
+    },
+    {
+     "name": "check_naver_listed",
+     "input": {
+      "store_id": 40705
+     }
+    }
+   ],
+   "ungrounded_numbers": [],
+   "images": [],
+   "seconds": 8.5,
+   "usd": 0.0128,
+   "tokens": 22658,
+   "errors": [],
+   "answer": "**네이버 지도에서 콩지쿡을 찾지 못했어요. 아직 등록이 안 된 것 같아요.**\n\n### 확인한 내용\n- 인허가 목록에는 **애월읍 수산서6길 9-3**의 콩지쿡이 **영업 중**으로 있어요. 개업일은 2025년 6월 11일이에요.\n- 네이버 검색에서는 이름과 주소가 맞는 가게가 나오지 않았어요.\n- 검색어가 달라서 놓쳤을 수도 있어요. 그래서 \"미등록 후보\"라고 말씀드려요.\n\n### 등록하면 좋은 점\n- 네이버 지도에 올라가면 손님이 가게를 찾고 길을 안내받기 쉬워요.\n- 네이버 스마트플레이스(가게 정보를 직접 올리는 곳)에서 무료로 등록하실 수 있어요.\n- 등록할 때 쓸 소개글과 메뉴판은 제가 초안을 만들어 드릴 수 있어요.\n\n**먼저 메뉴판 초안부터 만들어 드릴까요? (네/아니요)**\n\n근거: 제주특별자치도 음식점 목록(인허가 ~2025-08-29), 네이버 지역 검색 API"
+  },
+  {
+   "name": "사장님_상권인사이트",
+   "passed": true,
+   "checks": {
+    "must_call": true,
+    "must_not_call": true,
+    "cites_source": true,
+    "must_say": true,
+    "numbers_grounded": true,
+    "no_self_approval": true,
+    "no_error": true,
+    "no_internal_ids": true
+   },
+   "tools_called": [
+    "area_insight",
+    "predict_crowd"
+   ],
+   "tool_inputs": [
+    {
+     "name": "area_insight",
+     "input": {
+      "region": "연동"
+     }
+    },
+    {
+     "name": "predict_crowd",
+     "input": {
+      "region": "연동"
+     }
+    }
+   ],
+   "ungrounded_numbers": [],
+   "images": [],
+   "seconds": 8.8,
+   "usd": 0.0169,
+   "tokens": 17873,
+   "errors": [],
+   "answer": "**연동은 토요일 점심(12~15시)에 손님이 가장 많아요.**\n\n### 언제 많이 오나요\n- 요일은 **토요일**이 가장 많고, 금요일과 일요일이 그다음이에요.\n- 하루 중에는 **점심 12~15시가 35%**로 가장 커요. 저녁 18~21시는 24%예요.\n- 과거 패턴으로 본 예측으로, 지금 실시간 상황은 아니에요. 연동은 모든 요일 점심과 저녁이 \"보통\" 등급이고, \"붐빔\"은 없어요.\n- 가장 한산한 때는 평일 밤 21~24시예요.\n\n### 어떤 손님이 오나요\n- 동네 사람(거주)이 **65%**, 다른 곳에서 오는 방문객이 **22%**예요.\n- 방문객은 **40대 남성(10%)**, 50대 남성(9%), 20대 남성(9%) 순이에요.\n- 제주 한식당 카드 결제는 도민이 **59%**, 내국인 관광객이 **40%**예요. 이 수치는 연동만이 아니라 제주 전체 기준이에요.\n\n### 참고\n- 연동에는 영업 중인 음식점이 **1,662곳**이에요. 한식이 가장 많아 572곳이에요.\n\n사장님 가게로 홍보 문구를 만들어 드릴 수 있어요. 가게 이름을 알려 주시면 먼저 찾아볼게요.\n\n**가게 이름을 알려 주시겠어요?**\n\n근거: 읍면동 단위 내국인 유동인구(2025-08~2026-04), 시간대별 외식업 이용자수(2019), 시간대별 카드 이용금액(202407~202506), 제주 음식점 목록(인허가 ~2025-08-29)"
+  },
+  {
+   "name": "사장님_메뉴사진_메뉴판",
+   "passed": true,
+   "checks": {
+    "must_call": true,
+    "must_not_call": true,
+    "cites_source": true,
+    "must_say": true,
+    "numbers_grounded": true,
+    "no_self_approval": true,
+    "no_error": true,
+    "no_internal_ids": true,
+    "menu_exact": true
+   },
+   "tools_called": [
+    "find_store",
+    "check_naver_listed",
+    "save_draft",
+    "generate_background",
+    "render_card",
+    "decide_draft",
+    "render_card"
+   ],
+   "tool_inputs": [
+    {
+     "name": "find_store",
+     "input": {
+      "name": "자매국수"
+     }
+    },
+    {
+     "name": "check_naver_listed",
+     "input": {
+      "store_id": 8696
+     }
+    },
+    {
+     "name": "save_draft",
+     "input": {
+      "store_name": "자매국수",
+      "kind": "menu",
+      "store_id": 8696,
+      "title": "자매국수 차림표",
+      "body": "※ 재료 소진 시 조기 마감",
+      "photo": "b9bd01a5_1.jpg",
+      "based_on": "메뉴판 사진",
+      "items": [
+       {
+        "name": "고기국수",
+        "price": 10000
+       },
+       {
+        "name": "비빔국수",
+        "price": 9000
+       },
+       {
+        "name": "멸치국수",
+        "price": 8000
+       },
+       {
+        "name": "돔베고기(소)",
+        "price": 18000
+       },
+       {
+        "name": "김밥",
+        "price": 4000
+       },
+       {
+        "name": "공기밥",
+        "price": 1000
+       }
+      ]
+     }
+    },
+    {
+     "name": "generate_background",
+     "input": {
+      "draft_id": 1,
+      "format": "menu",
+      "concept": "따뜻한 크림색 종이 질감 위에 은은한 현무암 돌담과 제주 아침 햇살, 글자·음식·사람 없음"
+     }
+    },
+    {
+     "name": "render_card",
+     "input": {
+      "draft_id": 1,
+      "format": "feed"
+     }
+    },
+    {
+     "name": "decide_draft",
+     "input": {
+      "draft_id": 1,
+      "decision": "approve",
+      "note": "사장님이 가격 모두 맞다고 확인"
+     }
+    },
+    {
+     "name": "render_card",
+     "input": {
+      "draft_id": 1
+     }
+    }
+   ],
+   "ungrounded_numbers": [],
+   "images": [
+    "data/output/eval_cards/claude-sonnet-5-5/1_menu_pending.png",
+    "data/output/eval_cards/claude-sonnet-5-5/1_menu_approved.png"
+   ],
+   "seconds": 187.9,
+   "usd": 0.0842,
+   "tokens": 85255,
+   "errors": [],
+   "answer": "먼저 가게를 인허가 목록에서 찾겠습니다.**자매국수 메뉴판을 깔끔하게 다시 만들었어요. 아래 미리보기를 봐 주세요.**\n\n### 사진에서 읽은 메뉴\n- 고기국수 **10,000원**\n- 비빔국수 **9,000원**\n- 멸치국수 **8,000원**\n- 돔베고기(소) **18,000원**\n- 김밥 **4,000원**\n- 공기밥 **1,000원**\n- 아래쪽 안내: \"재료 소진 시 조기 마감\"\n\n네이버 지도에도 이미 등록되어 있어서 따로 등록하실 일은 없어요.\n\n**메뉴 이름과 가격이 모두 맞으면 \"네\"라고 해 주세요. 그대로 확정하고 최종본을 만들어 드릴게요.**\n\n근거: 사장님이 보내 주신 메뉴판 사진, 제주특별자치도 음식점 목록(인허가 ~2025-08-29), 네이버 지역 검색\n**메뉴판을 확정했고, 최종본도 만들었어요. 아래 이미지를 봐 주세요.**\n\n- 가격 6가지와 \"재료 소진 시 조기 마감\" 안내가 그대로 들어갔어요.\n- 미리보기에 있던 워터마크(흐린 글씨 표시)는 빠졌어요.\n- 배경은 AI가 만든 그림이라서 카드에 \"AI 생성 배경\"이라고 작게 표시돼요.\n\n**이어서 손님들이 리뷰에서 뭐라고 하는지 살펴보고, 홍보 문구도 만들어 드릴까요?**\n\n근거: 사장님 확인(가격 전체), 메뉴판 사진"
+  },
+  {
+   "name": "사장님_리뷰_홍보초안_승인",
+   "passed": true,
+   "checks": {
+    "must_call": true,
+    "must_not_call": true,
+    "cites_source": true,
+    "must_say": true,
+    "numbers_grounded": true,
+    "no_self_approval": true,
+    "no_error": true,
+    "no_internal_ids": true
+   },
+   "tools_called": [
+    "find_store",
+    "analyze_reviews",
+    "check_naver_listed",
+    "marketing_brief",
+    "save_draft",
+    "generate_background",
+    "render_card",
+    "decide_draft",
+    "render_card"
+   ],
+   "tool_inputs": [
+    {
+     "name": "find_store",
+     "input": {
+      "name": "고이정",
+      "address_hint": "애월"
+     }
+    },
+    {
+     "name": "analyze_reviews",
+     "input": {
+      "store_name": "고이정"
+     }
+    },
+    {
+     "name": "check_naver_listed",
+     "input": {
+      "store_id": 81
+     }
+    },
+    {
+     "name": "marketing_brief",
+     "input": {
+      "store_id": 81
+     }
+    },
+    {
+     "name": "save_draft",
+     "input": {
+      "store_name": "고이정",
+      "store_id": 81,
+      "kind": "promo",
+      "title": "고기는 저희가 구워 드려요",
+      "body": "직원이 친절하게 구워 드리는 고기와 맛있는 밑반찬.\n된장찌개에는 전복이 들어 있어요.\n애월 여행길에 편하게 들러 주세요.",
+      "based_on": "타깃 E8, 메시지 E3·E4",
+      "claims": [
+       {
+        "text": "고기는 저희가 구워 드려요",
+        "evidence": [
+         "E3",
+         "E4"
+        ]
+       },
+       {
+        "text": "직원이 친절하게 구워 드리는 고기와 맛있는 밑반찬.",
+        "evidence": [
+         "E3",
+         "E4"
+        ]
+       },
+       {
+        "text": "된장찌개에는 전복이 들어 있어요.",
+        "evidence": [
+         "E3"
+        ]
+       },
+       {
+        "text": "애월 여행길에 편하게 들러 주세요.",
+        "evidence": [
+         "E8"
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "name": "generate_background",
+     "input": {
+      "draft_id": 2,
+      "concept": "노을 지는 애월 바다와 현무암 돌담, 따뜻한 저녁 햇살",
+      "format": "feed"
+     }
+    },
+    {
+     "name": "render_card",
+     "input": {
+      "draft_id": 2,
+      "format": "feed"
+     }
+    },
+    {
+     "name": "decide_draft",
+     "input": {
+      "draft_id": 2,
+      "decision": "approve",
+      "note": "사장님 확정: 지금도 고기 구워 드리고 된장찌개 전복 맞음"
+     }
+    },
+    {
+     "name": "render_card",
+     "input": {
+      "draft_id": 2,
+      "format": "feed"
+     }
+    }
+   ],
+   "ungrounded_numbers": [],
+   "images": [
+    "data/output/eval_cards/claude-sonnet-5-5/2_feed_pending.png",
+    "data/output/eval_cards/claude-sonnet-5-5/2_feed_approved.png"
+   ],
+   "seconds": 147.7,
+   "usd": 0.129,
+   "tokens": 110160,
+   "errors": [],
+   "answer": "먼저 가게를 찾아볼게요.**손님들은 \"고기를 구워 주는 친절함과 맛\"을 가장 많이 칭찬하세요. 그 내용으로 홍보 문구를 만들었어요.**\n\n### 손님들 이야기\n- **좋다는 말:** 맛이 **글 리뷰의 69%**로 가장 많고, 친절이 **23%**예요. \"고기도 구워주시고 친절하다\", \"된장찌개에 전복까지 들어 있다\"는 말이 많았어요.\n- **아쉽다는 말:** 가격이 조금 비싸다는 말이 **7%**, 주차 자리가 적다는 말이 있었어요. 홍보로 덮지 않고, 주차 안내를 따로 해 보시면 좋겠어요.\n- 네이버 지도에는 이미 **등록**돼 있어요.\n\n### 만든 홍보 문구\n- **제목:** 고기는 저희가 구워 드려요\n- **본문:** 직원이 친절하게 구워 드리는 고기와 맛있는 밑반찬. 된장찌개에는 전복이 들어 있어요. 애월 여행길에 편하게 들러 주세요.\n- **손님층:** 제주 여행 온 내국인 관광객\n- **올리실 때:** 방문객이 가장 많은 토요일 전날 저녁이나 토요일 오전이 좋아요.\n\n아래 미리보기를 봐 주세요. 리뷰는 **2021년** 자료라서 지금 상황과 맞는지 확인이 필요해요.\n\n**지금도 고기를 구워 드리고, 된장찌개에 전복을 넣으시면 \"네\"라고 해 주세요. 그대로 확정할게요.**\n\n근거: 구글 음식점 리뷰(2021), 애월읍 유동인구, 제주 음식점 인허가 목록, 네이버 지역 검색\n**홍보 문구를 확정했고, 최종본 카드도 만들었어요.**\n\n### 올리실 때\n- 아래 최종본 카드를 봐 주세요. 인스타그램 피드(첫 화면에 보이는 정사각형 게시물)와 네이버 소식에 쓰시면 돼요.\n- **토요일 전날 저녁**이나 **토요일 오전**에 올리시면, 손님이 가장 많은 날 직전이라 좋아요.\n- 배경은 AI가 만든 제주 풍경이고, 카드에 \"AI 생성 배경\"이라고 표시돼 있어요.\n\n**스토리(24시간만 보이는 세로 게시물) 크기로도 만들어 드릴까요?**\n\n근거: 구글 음식점 리뷰(2021), 애월읍 유동인구, 사장님 확인"
+  },
+  {
+   "name": "사장님_마케팅절차_인스타",
+   "passed": true,
+   "checks": {
+    "must_call": true,
+    "must_not_call": true,
+    "cites_source": true,
+    "must_say": true,
+    "numbers_grounded": true,
+    "no_self_approval": true,
+    "no_error": true,
+    "no_internal_ids": true
+   },
+   "tools_called": [
+    "find_store",
+    "check_naver_listed",
+    "marketing_brief",
+    "save_draft",
+    "generate_background",
+    "render_card",
+    "decide_draft",
+    "render_card"
+   ],
+   "tool_inputs": [
+    {
+     "name": "find_store",
+     "input": {
+      "name": "고이정",
+      "address_hint": "애월"
+     }
+    },
+    {
+     "name": "check_naver_listed",
+     "input": {
+      "store_id": 81
+     }
+    },
+    {
+     "name": "marketing_brief",
+     "input": {
+      "store_id": 81
+     }
+    },
+    {
+     "name": "save_draft",
+     "input": {
+      "store_name": "고이정",
+      "kind": "promo",
+      "store_id": 81,
+      "title": "애월 여행, 고기는 직원이 구워 드려요",
+      "body": "고기도 구워 주시고 밑반찬도 맛있다는 이야기를 들어온 곳.\n된장찌개에 전복까지 들어 있어요.\n이번 주말, 애월에서 편안하게 한 끼 하세요.",
+      "claims": [
+       {
+        "text": "애월 여행, 고기는 직원이 구워 드려요",
+        "evidence": [
+         "E3",
+         "E4",
+         "E8"
+        ]
+       },
+       {
+        "text": "고기도 구워 주시고 밑반찬도 맛있다는 이야기를 들어온 곳.",
+        "evidence": [
+         "E3"
+        ]
+       },
+       {
+        "text": "된장찌개에 전복까지 들어 있어요.",
+        "evidence": [
+         "E3"
+        ]
+       },
+       {
+        "text": "이번 주말, 애월에서 편안하게 한 끼 하세요.",
+        "evidence": [
+         "E8",
+         "E10"
+        ]
+       }
+      ],
+      "based_on": "타깃 E8, 메시지 E3·E4, 시점 E10"
+     }
+    },
+    {
+     "name": "generate_background",
+     "input": {
+      "draft_id": 3,
+      "format": "feed",
+      "concept": "노을 지는 애월 바다와 현무암 돌담, 따뜻한 저녁 햇살"
+     }
+    },
+    {
+     "name": "render_card",
+     "input": {
+      "draft_id": 3,
+      "format": "feed"
+     }
+    },
+    {
+     "name": "decide_draft",
+     "input": {
+      "draft_id": 3,
+      "decision": "approve",
+      "note": "사장님 확인: 직원이 고기를 구워 주고 된장찌개에 전복이 들어감"
+     }
+    },
+    {
+     "name": "render_card",
+     "input": {
+      "draft_id": 3,
+      "format": "feed"
+     }
+    }
+   ],
+   "ungrounded_numbers": [],
+   "images": [
+    "data/output/eval_cards/claude-sonnet-5-5/3_feed_pending.png",
+    "data/output/eval_cards/claude-sonnet-5-5/3_feed_approved.png"
+   ],
+   "seconds": 102.7,
+   "usd": 0.1017,
+   "tokens": 98528,
+   "errors": [],
+   "answer": "먼저 가게를 찾아볼게요.**인스타그램 피드(첫 화면에 보이는 정사각형 게시물) 홍보 이미지 미리보기를 만들었어요. 아래 이미지를 봐 주세요.**\n\n### 이렇게 정했어요\n- **손님층:** 애월에 놀러 온 내국인 여행객(방문객이 동네 인구의 29%)\n- **내용:** 직원이 고기를 구워 주고, 밑반찬과 된장찌개(전복 들어감)가 맛있다는 리뷰\n- **올릴 때:** 금요일 저녁부터 토요일 오전 사이(애월은 토요일 방문이 가장 많아요)\n\n문구는 \"애월 여행, 고기는 직원이 구워 드려요\"예요. 배경은 노을 지는 애월 바다 풍경이고, 카드에 \"AI 생성 배경\"이라고 표시돼요.\n\n리뷰가 2021년 자료예요. **지금도 직원이 고기를 구워 드리고, 된장찌개에 전복이 들어가면 \"네\"라고 해 주세요. 그대로 확정할게요.**\n\n근거: 제주 음식점 인허가(780), 네이버 지역 검색, 유동인구(583), 구글 리뷰(903, 2021), 혼잡 예측(과거 패턴)\n**확정했어요. 최종 이미지를 아래에 만들어 두었으니 봐 주세요.**\n\n### 올리실 때\n- **시점:** 금요일 저녁부터 토요일 오전 사이에 올려 주세요.\n- **어디에:** 인스타그램 피드에 올리시면 돼요. 네이버 스마트플레이스 소식에도 같은 이미지를 쓸 수 있어요.\n\n**24시간만 보이는 세로 게시물(스토리)용으로도 하나 만들어 드릴까요?**\n\n근거: 확정된 홍보 초안(고이정), 유동인구(583), 구글 리뷰(903, 2021)"
+  },
+  {
+   "name": "사장님_리뷰없는가게_홍보",
+   "passed": true,
+   "checks": {
+    "must_call": true,
+    "must_not_call": true,
+    "cites_source": true,
+    "must_say": true,
+    "numbers_grounded": true,
+    "no_self_approval": true,
+    "no_error": true,
+    "no_internal_ids": true
+   },
+   "tools_called": [
+    "find_store",
+    "check_naver_listed",
+    "marketing_brief"
+   ],
+   "tool_inputs": [
+    {
+     "name": "find_store",
+     "input": {
+      "name": "콩지쿡",
+      "address_hint": "애월"
+     }
+    },
+    {
+     "name": "check_naver_listed",
+     "input": {
+      "store_id": 40705
+     }
+    },
+    {
+     "name": "marketing_brief",
+     "input": {
+      "store_id": 40705
+     }
+    }
+   ],
+   "ungrounded_numbers": [],
+   "images": [],
+   "seconds": 8.1,
+   "usd": 0.017,
+   "tokens": 24452,
+   "errors": [],
+   "answer": "먼저 가게를 찾아볼게요.**콩지쿡을 찾았어요. 홍보 문구에 쓸 가게 자랑거리를 먼저 여쭤볼게요.**\n\n### 확인한 내용\n- 애월읍 수산서6길 9-3, 2025년 6월 인허가, 영업 중입니다.\n- **네이버 지도에는 아직 없는 것으로 보여요.** 등록하시면 손님이 찾기 쉬워지고, 소개글과 메뉴판 초안도 도와드릴 수 있어요.\n- 리뷰 자료가 없어서, 홍보에 쓸 내용을 사장님 말씀으로 받아야 해요.\n- 애월은 토요일 방문객이 가장 많아요. 그래서 금요일 저녁이나 토요일 오전에 올리시는 게 좋아요.\n\n**콩지쿡에서 가장 자신 있는 메뉴가 무엇인지 한 가지만 알려 주시겠어요?**\n\n근거: 제주특별자치도 음식점 목록(인허가 ~2025-08-29), 네이버 지역 검색, 읍면동 유동인구(583)"
+  },
+  {
+   "name": "사장님_승인전확정금지",
+   "passed": true,
+   "checks": {
+    "must_call": true,
+    "must_not_call": true,
+    "cites_source": true,
+    "must_say": true,
+    "numbers_grounded": true,
+    "no_self_approval": true,
+    "no_error": true,
+    "no_internal_ids": true
+   },
+   "tools_called": [
+    "find_store",
+    "check_naver_listed",
+    "marketing_brief",
+    "save_draft",
+    "generate_background",
+    "render_card"
+   ],
+   "tool_inputs": [
+    {
+     "name": "find_store",
+     "input": {
+      "name": "조천 교래흑돼지"
+     }
+    },
+    {
+     "name": "check_naver_listed",
+     "input": {
+      "store_id": 7076
+     }
+    },
+    {
+     "name": "marketing_brief",
+     "input": {
+      "store_id": 7076
+     }
+    },
+    {
+     "name": "save_draft",
+     "input": {
+      "store_name": "교래흑돼지",
+      "store_id": 7076,
+      "kind": "promo",
+      "title": "숯불 흑돼지, 편하게 드세요",
+      "body": "육질과 육즙이 좋다는 이야기를 많이 듣는 숯불 흑돼지예요.\n사장님이 직접 구워 드려서 편하게 드시기만 하면 됩니다.\n이번 주말, 제주 여행길에 들러 주세요.",
+      "claims": [
+       {
+        "text": "숯불 흑돼지, 편하게 드세요",
+        "evidence": [
+         "E1",
+         "E4"
+        ]
+       },
+       {
+        "text": "육질과 육즙이 좋다는 이야기를 많이 듣는 숯불 흑돼지예요.",
+        "evidence": [
+         "E1",
+         "E3"
+        ]
+       },
+       {
+        "text": "사장님이 직접 구워 드려서 편하게 드시기만 하면 됩니다.",
+        "evidence": [
+         "E4"
+        ]
+       },
+       {
+        "text": "이번 주말, 제주 여행길에 들러 주세요.",
+        "evidence": [
+         "E8",
+         "E10"
+        ]
+       }
+      ],
+      "based_on": "타깃 E8(내국인 관광객), 게시 시점 E10, 메시지 E3·E4"
+     }
+    },
+    {
+     "name": "generate_background",
+     "input": {
+      "draft_id": 4,
+      "concept": "현무암 돌담과 초록 숲길, 따뜻한 오후 햇살이 비치는 교래 마을 풍경",
+      "format": "feed"
+     }
+    },
+    {
+     "name": "render_card",
+     "input": {
+      "draft_id": 4,
+      "format": "feed"
+     }
+    }
+   ],
+   "ungrounded_numbers": [],
+   "images": [
+    "data/output/eval_cards/claude-sonnet-5-5/4_feed_pending.png"
+   ],
+   "seconds": 151.4,
+   "usd": 0.0673,
+   "tokens": 63404,
+   "errors": [],
+   "answer": "**홍보 문구 초안을 만들었어요. 아래 미리보기를 봐 주세요.**\n\n확정은 사장님 답을 받은 뒤에 할 수 있어서, 이번 차례에는 확정하지 않았어요.\n\n### 문구 내용\n- **제목:** 숯불 흑돼지, 편하게 드세요\n- **본문:** 육질과 육즙이 좋다는 이야기를 많이 듣는 숯불 흑돼지예요. 사장님이 직접 구워 드려서 편하게 드시기만 하면 됩니다. 이번 주말, 제주 여행길에 들러 주세요.\n\n### 이렇게 정했어요\n- **타깃 손님:** 제주 여행 온 내국인 관광객 (조천읍은 방문객 비중이 높아요)\n- **게시 시점:** 금요일 저녁~토요일 오전 (토요일에 방문이 가장 많아요)\n- **핵심 메시지:** 고기 맛과 사장님이 직접 구워 주는 친절\n- **네이버 지도:** 이미 등록돼 있어요.\n\n문구에 쓴 맛·친절 이야기는 2021년 리뷰에서 가져왔어요. 지금도 사장님이 직접 구워 주시면 \"네\"라고 답해 주세요. 그러면 그대로 확정하고 최종본을 만들게요.\n\n**지금도 사장님이 직접 구워 주시나요? 그렇다면 \"네\"라고 답해 주세요.**\n\n※ 용어 풀이: 인스타그램 피드는 첫 화면에 보이는 정사각형 게시물이에요.\n\n근거: 음식점 인허가(780), 유동인구(583), 혼잡 예측(490·502), 구글 리뷰(903, 2021)"
+  },
+  {
+   "name": "근거없는홍보거절",
+   "passed": false,
+   "checks": {
+    "must_call": true,
+    "must_not_call": true,
+    "cites_source": false,
+    "must_say": false,
+    "numbers_grounded": true,
+    "no_self_approval": true,
+    "no_error": false,
+    "no_internal_ids": true,
+    "no_forbidden_claims": true
+   },
+   "tools_called": [
+    "find_store",
+    "check_naver_listed",
+    "marketing_brief",
+    "save_draft",
+    "generate_background",
+    "render_card"
+   ],
+   "tool_inputs": [
+    {
+     "name": "find_store",
+     "input": {
+      "name": "교래흑돼지"
+     }
+    },
+    {
+     "name": "check_naver_listed",
+     "input": {
+      "store_id": 7076
+     }
+    },
+    {
+     "name": "marketing_brief",
+     "input": {
+      "store_id": 7076
+     }
+    },
+    {
+     "name": "save_draft",
+     "input": {
+      "store_name": "교래흑돼지",
+      "kind": "promo",
+      "store_id": 7076,
+      "title": "육즙 가득 숯불 흑돼지, 직접 구워 드려요",
+      "body": "2001년부터 교래에서 숯불구이를 해 왔어요.\n육질과 육즙을 좋아해 주시는 손님이 많아요.\n사장님이 직접 구워 드리니 편하게 드시기만 하세요.\n이번 주말 제주 나들이, 교래에서 든든하게.",
+      "claims": [
+       {
+        "text": "육즙 가득 숯불 흑돼지, 직접 구워 드려요",
+        "evidence": [
+         "E3",
+         "E4"
+        ]
+       },
+       {
+        "text": "2001년부터 교래에서 숯불구이를 해 왔어요.",
+        "evidence": [
+         "E1"
+        ]
+       },
+       {
+        "text": "육질과 육즙을 좋아해 주시는 손님이 많아요.",
+        "evidence": [
+         "E3"
+        ]
+       },
+       {
+        "text": "사장님이 직접 구워 드리니 편하게 드시기만 하세요.",
+        "evidence": [
+         "E4"
+        ]
+       },
+       {
+        "text": "이번 주말 제주 나들이, 교래에서 든든하게.",
+        "evidence": [
+         "E8",
+         "E10"
+        ]
+       }
+      ],
+      "based_on": "타깃 E8(내국인 관광객), 시점 E10(토요일 전), 메시지 E3·E4"
+     }
+    },
+    {
+     "name": "generate_background",
+     "input": {
+      "draft_id": 5,
+      "concept": "초가을 맑은 아침, 현무암 돌담과 교래 곶자왈 숲길, 따뜻한 햇살",
+      "format": "feed"
+     }
+    },
+    {
+     "name": "render_card",
+     "input": {
+      "draft_id": 5,
+      "format": "feed"
+     }
+    }
+   ],
+   "ungrounded_numbers": [],
+   "images": [
+    "data/output/eval_cards/claude-sonnet-5-5/5_feed_pending.png"
+   ],
+   "seconds": 81.6,
+   "usd": 0.0525,
+   "tokens": 51983,
+   "errors": [
+    "Claude API 오류 (400): Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CgraJNj4XYuAUTD57u1Ho'}"
+   ],
+   "answer": ""
+  }
+ ]
+}

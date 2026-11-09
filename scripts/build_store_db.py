@@ -92,9 +92,10 @@ def main():
     df["admin_emd"] = [",".join(admin_of(c, e)) or None for c, e in zip(df["city"], df["emd"])]
     df["is_open"] = df["status"].fillna("").str.startswith("영업").astype(int)
     df["geocode_addr"] = df["addr_road"].fillna(df["addr_jibun"])
-    df["lat"] = None
-    df["lng"] = None
-    df["naver_listed"] = None  # 1=등록, 0=미등록, NULL=미확인
+    # 빈 열도 숫자형으로 만들어야 SQLite에 INTEGER/REAL로 저장된다 (None만 있으면 TEXT가 됨)
+    df["lat"] = pd.Series(dtype="float64")
+    df["lng"] = pd.Series(dtype="float64")
+    df["naver_listed"] = pd.Series(dtype="Int64")  # 1=등록, 0=미등록, NULL=미확인
     df.insert(0, "store_id", range(1, len(df) + 1))
 
     out = ROOT / "data/processed/jeju.db"
