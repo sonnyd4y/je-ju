@@ -279,7 +279,7 @@
     <section class="view full" id="v-map">
       <div class="map-bar" id="mapBar"></div>
       <div style="position:relative;flex:1;display:flex"><div id="map"></div>
-        <div class="map-legend"><span><i style="background:var(--quiet)"></i>한산</span><span><i style="background:var(--normal)"></i>보통</span><span><i style="background:var(--busy)"></i>붐빔</span><span>⛰오름 🏖해수욕장 🏛관광지 📍명소 <i style="background:var(--accent)"></i>식당</span></div>
+        <div class="map-legend"><span><i style="background:var(--quiet)"></i>한산</span><span><i style="background:var(--normal)"></i>보통</span><span><i style="background:var(--busy)"></i>붐빔</span><span>⛰오름 🏖해수욕장 🏛관광지 📍명소</span><br><span><i style="background:var(--accent)"></i>숨은 가게(네이버 미등록)</span><span><i style="background:var(--sea)"></i>네이버 등록</span><span><i style="background:#9a948a"></i>미확인</span></div>
       </div>
     </section>
     <section class="view" id="v-plan"></section>
@@ -458,6 +458,7 @@ const MAP_KINDS = [["areas", "동네 혼잡"], ["관광지", "🏛 관광지"], 
 let mapOn = store.get("mapOn", ["areas", "관광지", "해수욕장", "명소", "stores"]);
 function renderMap() {
   $("#mapBar").innerHTML = `<div class="chips">${MAP_KINDS.map(([k, l]) => `<button class="chip" data-k="${k}" aria-pressed="${mapOn.includes(k)}">${l}</button>`).join("")}</div>
+    <span class="small muted" style="white-space:nowrap">식당: ${esc(state.regions.join("·"))}</span>
     <div class="chips" style="margin-left:auto">${SLOTS.map((s) => `<button class="chip" data-s="${s}" aria-pressed="${state.slot === s}">${s}</button>`).join("")}</div>`;
   $("#mapBar").querySelectorAll("[data-k]").forEach((b) => (b.onclick = () => {
     const k = b.dataset.k; mapOn = mapOn.includes(k) ? mapOn.filter((x) => x !== k) : [...mapOn, k]; store.set("mapOn", mapOn);
@@ -465,15 +466,15 @@ function renderMap() {
   }));
   $("#mapBar").querySelectorAll("[data-s]").forEach((b) => (b.onclick = () => { state.slot = b.dataset.s; store.set("slot", state.slot); renderMap(); }));
   if (!mapObj) {
-    mapObj = L.map("map").setView([33.38, 126.55], 10);
+    mapObj = L.map("map", { preferCanvas: true }).setView([33.38, 126.55], 10);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "© OpenStreetMap" }).addTo(mapObj);
   }
   setTimeout(() => mapObj.invalidateSize(), 60);
   drawMap();
 }
 async function drawMap() {
-  const key = `${dateFor(state.day)}|${state.slot}`;
-  if (mapCache.key !== key) mapCache = { key, data: await api(`/api/map?when=${dateFor(state.day)}&time_slot=${encodeURIComponent(state.slot)}`) };
+  const key = `${dateFor(state.day)}|${state.slot}|${state.regions.join(",")}`;
+  if (mapCache.key !== key) mapCache = { key, data: await api(`/api/map?when=${dateFor(state.day)}&time_slot=${encodeURIComponent(state.slot)}&store_regions=${encodeURIComponent(state.regions.join(","))}`) };
   const d = mapCache.data;
   Object.values(mapLayers).forEach((l) => mapObj.removeLayer(l));
   mapLayers = {};
@@ -489,8 +490,9 @@ async function drawMap() {
     }).bindPopup(`<b>${esc(p.name)}</b><br>${esc(p.kind)} · ${esc(p.emd)}<br>이번 달 붐빔: ${LV(p.level)}<br><a href="${naverSearch("제주 " + p.name)}" target="_blank" rel="noopener">네이버 지도</a>`))).addTo(mapObj);
   }
   if (mapOn.includes("stores")) {
-    mapLayers.stores = L.layerGroup(d.stores.map((s) => L.circleMarker([s.lat, s.lng], { radius: 5, color: "#fff", weight: 1, fillColor: "#d9580b", fillOpacity: .9 })
-      .bindPopup(`<b>${esc(s.name)}</b><br>${esc(s.category || "")} · ${esc(s.emd || "")}<br><a href="${naverSearch(s.name + " " + (s.emd || ""))}" target="_blank" rel="noopener">네이버 지도</a>`))).addTo(mapObj);
+    const sc = (n) => n === 0 ? "#d9580b" : n === 1 ? "#0f5c6e" : "#9a948a";
+    mapLayers.stores = L.layerGroup(d.stores.map((s) => L.circleMarker([s.lat, s.lng], { radius: s.naver_listed === 0 ? 6 : 4, color: "#fff", weight: 1, fillColor: sc(s.naver_listed), fillOpacity: .9 })
+      .bindPopup(`<b>${esc(s.name)}</b><br>${esc(s.category || "")} · ${esc(s.emd || "")}<br>${s.naver_listed === 0 ? '<span class="badge b-hidden">숨은 가게 · 네이버 미등록</span>' : s.naver_listed === 1 ? '<span class="badge b-listed">네이버 등록</span>' : '<span class="badge b-unknown">네이버 미확인</span>'}<br><a href="${naverSearch(s.name + " " + (s.emd || ""))}" target="_blank" rel="noopener">네이버 지도</a>`))).addTo(mapObj);
   }
 }
 

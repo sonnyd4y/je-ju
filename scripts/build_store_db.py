@@ -75,8 +75,8 @@ def emd_of(addr):
     return (c.group(1) if c else None), None
 
 
-def main():
-    src, mode = find_source()
+def prepare(src) -> pd.DataFrame:
+    """인허가 CSV → stores 테이블 형식 (store_id 없이). sync_licenses.py 에서도 사용."""
     df = read_csv(src).rename(columns=COLS)
     df = df[[c for c in COLS.values() if c in df.columns]]
     for c in DATE_COLS:
@@ -96,6 +96,18 @@ def main():
     df["lat"] = pd.Series(dtype="float64")
     df["lng"] = pd.Series(dtype="float64")
     df["naver_listed"] = pd.Series(dtype="Int64")  # 1=등록, 0=미등록, NULL=미확인
+    return df
+
+
+def store_key(df: pd.DataFrame) -> pd.Series:
+    """새 파일과 비교할 때 같은 가게인지 판단하는 키: 상호 + 주소 + 인허가일."""
+    addr = df["addr_road"].fillna(df["addr_jibun"]).fillna("").str.replace(r"\s+", "", regex=True)
+    return df["name"].fillna("").str.replace(r"\s+", "", regex=True) + "|" + addr + "|" + df["open_date"].fillna("")
+
+
+def main():
+    src, mode = find_source()
+    df = prepare(src)
     df.insert(0, "store_id", range(1, len(df) + 1))
 
     out = ROOT / "data/processed/jeju.db"
@@ -111,6 +123,15 @@ def main():
                 "lat = (SELECT lat FROM naver_check n WHERE n.store_id = stores.store_id), "
                 "lng = (SELECT lng FROM naver_check n WHERE n.store_id = stores.store_id) "
                 "WHERE store_id IN (SELECT store_id FROM naver_check)"
+            )
+        # 네이버 검색 좌표가 없는 가게는 주소 Geocoding 결과(geocode_cache)로 복원
+        if con.execute("SELECT 1 FROM sqlite_master WHERE name='geocode_cache'").fetchone():
+            con.execute(
+                "UPDATE stores SET lat = (SELECT g.lat FROM geocode_cache g WHERE g.address = rtrim(substr(coalesce(stores.addr_road, stores.addr_jibun), 1, "
+                "instr(coalesce(stores.addr_road, stores.addr_jibun) || ',', ',') - 1))), "
+                "lng = (SELECT g.lng FROM geocode_cache g WHERE g.address = rtrim(substr(coalesce(stores.addr_road, stores.addr_jibun), 1, "
+                "instr(coalesce(stores.addr_road, stores.addr_jibun) || ',', ',') - 1))) "
+                "WHERE lat IS NULL"
             )
 
     print(f"원본: {src.name} ({'전체' if mode == 'full' else '미리보기 샘플'})")

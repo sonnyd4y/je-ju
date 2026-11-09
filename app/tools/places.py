@@ -43,6 +43,32 @@ def _poi_levels(month: int) -> dict[int, str]:
         return {}
 
 
+LEVELS = ["한산", "보통", "붐빔"]
+
+
+def _slot_of(t: str) -> str:
+    """'HH:MM' → 카드 시간대 (오전/점심/오후/저녁/밤, 607 정의가 공개되지 않아 근사)."""
+    h = int(t[:2])
+    return "오전" if 6 <= h < 11 else "점심" if h < 14 else "오후" if h < 18 else "저녁" if h < 21 else "밤"
+
+
+def _slot_factor(slot: str, district: str = "내국인 주요 관광지") -> float | None:
+    try:
+        r = db.rows("SELECT factor FROM district_time WHERE district=? AND slot=?", [district, slot])
+        return r[0]["factor"] if r else None
+    except Exception:
+        return None
+
+
+def adjust_level(level: str, slot: str) -> str:
+    """월 단위 혼잡을 시간대 패턴으로 한 단계 올리거나 내린다 (관광지 기준: 오후 붐빔, 오전 한산)."""
+    f = _slot_factor(slot)
+    if level not in LEVELS or f is None:
+        return level
+    i = LEVELS.index(level) + (1 if f >= 1.4 else -1 if f <= 0.75 else 0)
+    return LEVELS[min(max(i, 0), 2)]
+
+
 def place_crowd(name: str, when: str = "") -> dict:
     """관광 장소(오름·해수욕장·관광지·명소)의 그 달 혼잡 정도 (와이파이·관광지 유입 데이터)."""
     from rapidfuzz import fuzz, process
@@ -60,8 +86,9 @@ def place_crowd(name: str, when: str = "") -> dict:
         "vs_usual": round(cur["factor"], 2) if cur else None,
         "by_month": {r["month"]: r["level"] for r in rows},
         "quietest_months": [r["month"] for r in sorted(rows, key=lambda r: r["factor"])[:3]],
+        "by_time_of_day": {s: adjust_level(cur["level"], s) for s in ("오전", "점심", "오후", "저녁")} if cur else {},
         "note": "월 단위 과거 패턴 (시간대별 자료 없음). vs_usual은 이 장소 연평균 대비 그 달 방문 비율" if rows else "이 장소는 방문 자료가 없음",
-        "sources": db.cite("wifi_monthly", "sight_monthly") if rows else [],
+        "sources": db.cite("wifi_monthly", "sight_monthly", "district_time") if rows else [],
     }
 
 
@@ -130,6 +157,8 @@ def plan_itinerary(regions_text: str, when: str = "", start: str = "10:00", stop
             if rt:
                 mv, d, path, how = max(1, rt["minutes"]), rt["km"], rt["path"], "길찾기"
         arrive = at + timedelta(minutes=mv)
+        if stop["kind"] != "식사":  # 관광 장소는 도착 시간대 패턴 반영
+            stop = {**stop, "level": adjust_level(stop["level"], _slot_of(arrive.strftime("%H:%M")))}
         plan.append({**stop, "icon": KIND_ICON[stop["kind"]], "arrive": arrive.strftime("%H:%M"),
                      "stay_min": STAY[stop["kind"]], "travel_min": mv, "distance_km": round(d, 1),
                      "route": how if prev else None, "path": path})
@@ -158,15 +187,15 @@ def plan_itinerary(regions_text: str, when: str = "", start: str = "10:00", stop
         "notes": [
             "이동 시간은 네이버 길찾기(자동차) 기준" if any(p.get("route") == "길찾기" for p in plan)
             else "이동 시간은 직선거리×1.3, 시속 35km 기준 추정 (실제 도로 경로 아님)",
-            "장소 혼잡은 월 단위 과거 패턴(와이파이·관광지 유입), 식당은 동네 혼잡 예측 + 추천 모델",
+            "장소 혼잡은 월 단위 과거 패턴(와이파이·관광지 유입)에 관광지 시간대 패턴(607, 2016~17)을 반영, 식당은 동네 혼잡 예측 + 추천 모델",
             "점심 시간대가 붐비면 11:30으로 당김" if lunch and lunch["level"] == "붐빔" else "",
         ],
-        "sources": db.cite("wifi_monthly", "sight_monthly", "pop_daily", "stores") + ["811 오름 위치", "784 해수욕장 정보"],
+        "sources": db.cite("wifi_monthly", "sight_monthly", "district_time", "pop_daily", "stores") + ["811 오름 위치", "784 해수욕장 정보"],
     }
 
 
 def map_data(when: str = "", time_slot: str = "점심", kinds: str = "관광지,오름,해수욕장,명소",
-             store_regions: str = "", store_limit: int = 400) -> dict:
+             store_regions: str = "", store_limit: int = 3000) -> dict:
     """지도용: 동네 혼잡 원 + 관광 장소 핀 + 좌표 있는 가게 핀."""
     cents = db.rows("SELECT city, emd, lat, lng FROM region_centroids")
     areas = []
@@ -179,9 +208,11 @@ def map_data(when: str = "", time_slot: str = "점심", kinds: str = "관광지,
     kind_list = [k.strip() for k in kinds.split(",") if k.strip()]
     pois = [dict(p, level=levels.get(p["poi_id"], "정보 없음"))
             for p in db.rows("SELECT poi_id, kind, name, lat, lng, emd FROM pois") if p["kind"] in kind_list]
+    from app.tools.stores import NON_RESTAURANT
     sql = ("SELECT store_id, name, category, emd, lat, lng, naver_listed, open_date FROM stores "
-           "WHERE status LIKE '영업%' AND lat IS NOT NULL")
-    params: list = []
+           "WHERE status LIKE '영업%' AND lat IS NOT NULL "
+           f"AND coalesce(category,'') NOT IN ({','.join('?' * len(NON_RESTAURANT))})")
+    params: list = list(NON_RESTAURANT)
     if store_regions:
         legal = []
         for n in store_regions.split(","):
@@ -193,4 +224,4 @@ def map_data(when: str = "", time_slot: str = "점심", kinds: str = "관광지,
             params += legal
     stores = db.rows(sql + " LIMIT ?", [*params, store_limit])
     return {"areas": areas, "pois": pois, "stores": stores,
-            "note": "가게 핀은 네이버 검색으로 좌표를 확인한 가게만 (현재 애월·한림·구좌). 미등록 가게는 목록에서 주소로 확인"}
+            "note": "가게 위치: 네이버 검색 좌표 또는 인허가 주소의 네이버 Geocoding 좌표"}

@@ -177,6 +177,18 @@ def sight_monthly():
     return p.rename(columns={"dtYearMonth": "ym", "sightsName": "sight"})
 
 
+# ---------- 607 : 관광지·상업지구 시간대별 카드 ----------
+
+def district_time():
+    """지구 유형(관광지·상업지·구도심)별 시간대 카드 이용 비율. 2016-09~2017-11 자료라 '패턴'으로만 사용."""
+    d = read_csv(one(607, "607_api.csv"))
+    d["useCount"] = pd.to_numeric(d["useCount"])
+    g = d.groupby(["districtType", "dateTimeCategory"], as_index=False)["useCount"].sum()
+    g["share"] = g.useCount / g.groupby("districtType").useCount.transform("sum")
+    g["factor"] = (g.share / 0.2).round(3)  # 5개 시간대 평균(20%) 대비
+    return g.rename(columns={"districtType": "district", "dateTimeCategory": "slot", "useCount": "use_count"})
+
+
 # ---------- 568 : 와이파이 ----------
 
 def clean_place(name: str):
@@ -274,13 +286,16 @@ def main():
         x = wifi_monthly()
         add("wifi_monthly", x, "568", f"{x.ym.min()}~{x.ym.max()}", "장소명 AP번호 제거 후 합산")
 
+    def step_district():
+        add("district_time", district_time(), "607", "2016-09~2017-11", "지구 유형별 시간대 패턴 (오래된 자료, 비율만 사용)")
+
     def step_reviews():
         add("reviews", reviews(), "903", "2021", "작성자 정보 삭제")
         x = place_ratings()
         add("place_ratings", x, "906", f"{x.date.min()}~{x.date.max()}")
 
     print("전처리:")
-    for step in (step_meal, step_card, step_dow, step_menu, step_customer, step_pop, step_sight, step_wifi, step_reviews):
+    for step in (step_meal, step_card, step_dow, step_menu, step_customer, step_pop, step_sight, step_wifi, step_district, step_reviews):
         try:
             step()
         except FileNotFoundError as e:

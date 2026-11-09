@@ -166,7 +166,7 @@ def api_naver(store_id: int):
 
 
 @app.get("/api/map")
-def api_map(when: str = "", time_slot: str = "점심", kinds: str = "관광지,오름,해수욕장,명소", store_regions: str = ""):
+def api_map(when: str = "", time_slot: str = "점심", kinds: str = "관광지,오름,해수욕장,명소", store_regions: str = "애월,한림,구좌"):
     return places.map_data(when, time_slot, kinds, store_regions)
 
 
