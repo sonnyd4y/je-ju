@@ -62,12 +62,16 @@ def _keys():
 def search(query: str, display: int = 5) -> list[dict]:
     cid, sec = _keys()
     for attempt in range(3):
-        r = _session.get(
-            URL,
-            params={"query": query, "display": display, "format": "json"},
-            headers={"X-NCP-APIGW-API-KEY-ID": cid, "X-NCP-APIGW-API-KEY": sec},
-            timeout=15,
-        )
+        try:
+            r = _session.get(
+                URL,
+                params={"query": query, "display": display, "format": "json"},
+                headers={"X-NCP-APIGW-API-KEY-ID": cid, "X-NCP-APIGW-API-KEY": sec},
+                timeout=15,
+            )
+        except requests.exceptions.RequestException:  # 연결 끊김은 잠시 뒤 다시 시도
+            time.sleep(2 + attempt * 3)
+            continue
         if r.status_code == 429 or r.status_code >= 500:
             time.sleep(1 + attempt * 2)
             continue

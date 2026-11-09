@@ -3,7 +3,7 @@
 1) 만들기: python scripts/make_validation.py make
    docs/검증/네이버판별_표본50.xlsx  - 애월 판별 결과 표본(미등록 후보 25, 등록 15, 확인 필요 10). 링크를 눌러 네이버 지도에서 확인 후
                                       '실제' 칸에 등록 / 미등록 입력
-   docs/검증/리뷰분류_표본100.xlsx   - 리뷰 100건과 규칙 분류 결과. '맞음' 칸에 O / X, 틀리면 '정답' 칸에 바른 분류(예: 맛+ 가격-)
+   docs/검증/리뷰분류_표본100.xlsx   - 리뷰 100건과 규칙 분류·오픈소스 모델 분류. 각각 '맞음' 칸에 O / X
 2) 채점: python scripts/make_validation.py score  → docs/검증/검증결과.json
 표본은 고정 시드(42)로 뽑아 재현 가능.
 """
@@ -19,7 +19,7 @@ sys.path.insert(0, str(ROOT))
 sys.stdout.reconfigure(encoding="utf-8")
 
 from app.data import db  # noqa: E402
-from app.tools.reviews import classify  # noqa: E402
+from app.tools.reviews import FACTORS, classify  # noqa: E402
 
 OUT = ROOT / "docs/검증"
 NAVER = OUT / "네이버판별_표본50.xlsx"
@@ -38,6 +38,18 @@ def _write(df: pd.DataFrame, path: Path, link_col: str | None, widths: dict):
             for r in range(2, len(df) + 2):
                 c = ws.cell(row=r, column=idx)
                 c.hyperlink, c.style = c.value, "Hyperlink"
+
+
+def _model_label(review_id: int) -> str:
+    """오픈소스 감성 모델 결과 (review_aspects) → '맛+ 가격-' 형식."""
+    try:
+        rows = db.rows("SELECT factor, sum(polarity) v FROM review_aspects WHERE review_id=? GROUP BY factor", [review_id])
+    except Exception:
+        return "(모델 결과 없음)"
+    from app.tools.reviews import FACTORS
+    order = list(FACTORS)
+    rows = sorted((r for r in rows if r["v"]), key=lambda r: order.index(r["factor"]))
+    return " ".join(f"{r['factor']}{'+' if r['v'] > 0 else '-'}" for r in rows) or "(해당 없음)"
 
 
 def make():
@@ -61,14 +73,15 @@ def make():
     rv = db.query("SELECT review_id, store, stars, contents FROM reviews WHERE length(contents) >= 15")
     r = rv.sample(100, random_state=42).copy()
     r["규칙 분류"] = [
-        " ".join(f"{k}{'+' if v > 0 else '-'}" for k, v in classify(t, st).items()) or "(해당 없음)"
+        " ".join(f"{k}{'+' if v > 0 else '-'}" for k, v in sorted(classify(t, st).items(), key=lambda kv: list(FACTORS).index(kv[0]))) or "(해당 없음)"
         for t, st in zip(r.contents, r.stars)
     ]
-    r["맞음(O/X)"] = ""
-    r["정답(틀렸을 때)"] = ""
-    r = r[["review_id", "store", "stars", "contents", "규칙 분류", "맞음(O/X)", "정답(틀렸을 때)"]]
-    r.columns = ["review_id", "가게", "별점", "리뷰", "규칙 분류", "맞음(O/X)", "정답(틀렸을 때)"]
-    _write(r, REVIEW, None, {"B": 16, "C": 6, "D": 70, "E": 20, "F": 10, "G": 20})
+    r["모델 분류"] = [_model_label(i) for i in r.review_id]
+    r["규칙 맞음(O/X)"] = ""
+    r["모델 맞음(O/X)"] = ""
+    r = r[["review_id", "store", "stars", "contents", "규칙 분류", "모델 분류", "규칙 맞음(O/X)", "모델 맞음(O/X)"]]
+    r.columns = ["review_id", "가게", "별점", "리뷰", "규칙 분류", "모델 분류", "규칙 맞음(O/X)", "모델 맞음(O/X)"]
+    _write(r, REVIEW, None, {"B": 16, "C": 6, "D": 70, "E": 18, "F": 18, "G": 12, "H": 12})
     print(f"저장: {NAVER.relative_to(ROOT)} ({len(s)}건), {REVIEW.relative_to(ROOT)} ({len(r)}건)")
 
 
@@ -89,9 +102,12 @@ def score():
             if (n["판별"] == "확인 필요").any() else None,
         }
     if REVIEW.exists():
-        r = pd.read_excel(REVIEW).dropna(subset=["맞음(O/X)"])
-        ok = r["맞음(O/X)"].astype(str).str.strip().str.upper().isin(["O", "0", "ㅇ", "맞음"])
-        res["reviews"] = {"checked": int(len(r)), "accuracy": round(float(ok.mean()), 3) if len(r) else None}
+        r = pd.read_excel(REVIEW)
+        is_ok = lambda col: r[col].dropna().astype(str).str.strip().str.upper().isin(["O", "0", "ㅇ", "맞음"])
+        res["reviews"] = {}
+        for col, key in (("규칙 맞음(O/X)", "rule"), ("모델 맞음(O/X)", "model")):
+            ok = is_ok(col)
+            res["reviews"][key] = {"checked": int(len(ok)), "accuracy": round(float(ok.mean()), 3) if len(ok) else None}
     (OUT / "검증결과.json").write_text(json.dumps(res, ensure_ascii=False, indent=1), encoding="utf-8")
     print(json.dumps(res, ensure_ascii=False, indent=1))
 

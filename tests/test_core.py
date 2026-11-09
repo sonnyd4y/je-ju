@@ -169,7 +169,7 @@ def test_agent_loop_calls_tool_then_answers(monkeypatch):
     assert s.messages[3]["content"][0]["tool_use_id"] == "t1"
     # 두 번째 요청은 도구 결과를 포함한 전체 기록을 보낸다
     assert len(fake.calls[1]["messages"]) == 4
-    assert fake.calls[0]["model"] == loop.MODEL
+    assert fake.calls[0]["model"] == (loop.MODEL_BY_MODE.get("tourist") or loop.MODEL)  # 관광객은 유형별 모델
 
 
 def test_agent_loop_bad_tool_input_returns_error_result(monkeypatch):

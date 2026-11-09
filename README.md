@@ -62,6 +62,8 @@ python scripts/build_insight_db.py      # 분석용 테이블 → jeju.db
 python scripts/check_naver.py 애월       # 지역 가게의 네이버 등록 여부 확인 (네이버 키 필요)
 
 python scripts/train_demand.py          # 방문 수요 예측 모델 학습·검증 → data/processed/demand_model.joblib
+pip install -r requirements-ml.txt      # (선택) 리뷰 감성 모델용 PyTorch·transformers
+python scripts/build_review_sentiment.py   # 오픈소스 감성 모델로 리뷰 판단 → jeju.db review_aspects
 
 # Agent
 uvicorn app.api.main:app --port 8000    # 웹 화면: 브라우저에서 http://localhost:8000
@@ -90,6 +92,7 @@ python scripts/eval_agent.py --model claude-haiku-5-5   # 모델별 품질·비�
 | 모델 | 방법 | 검증 |
 |---|---|---|
 | 방문 수요 예측 | scikit-learn HistGradientBoosting (요일·공휴일·연휴·계절·동네) | 2026-03~04 검증: 오차 18.9% (요일 평균 22.8%), 혼잡 등급 일치 59.4% (36.9%). 공휴일은 일요일 패턴으로 대체 |
+| 리뷰 감성 | 오픈소스 KoELECTRA 감성 모델 (Copycats/koelectra-base-v3-generalized-sentiment-analysis, Apache-2.0, CPU) | 5,309개 절 판단, 규칙과 일치율 90%. 사람 검증 100건으로 규칙 vs 모델 정확도 비교 예정 |
 | 관광객 추천 | 다기준 가중 점수: 덜 붐빔·생활권 여유·숨은 가게·오래된 가게 | 같은 입력 → 같은 순위, 기준별 점수 공개 |
 
 ## 사용 모델·외부 의존성

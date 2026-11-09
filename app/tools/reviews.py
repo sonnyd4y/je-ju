@@ -68,6 +68,14 @@ def _quote(text: str, n=70) -> str:
     return t if len(t) <= n else t[: n - 1] + "…"
 
 
+def _model_aspects(store: str) -> list[dict]:
+    """scripts/build_review_sentiment.py가 만든 모델 판단 결과 (없으면 빈 목록 → 규칙 사용)."""
+    try:
+        return db.rows("SELECT review_id, factor, polarity, clause FROM review_aspects WHERE store = ?", [store])
+    except Exception:
+        return []
+
+
 def analyze_reviews(store_name: str, limit_quotes: int = 2) -> dict:
     """가게 리뷰를 요인별 긍정·부정으로 나누고 대표 문장을 뽑는다."""
     names = [r["store"] for r in db.rows("SELECT DISTINCT store FROM reviews")]
@@ -84,12 +92,28 @@ def analyze_reviews(store_name: str, limit_quotes: int = 2) -> dict:
 
     pos, neg = Counter(), Counter()
     quotes: dict[tuple[str, int], list[tuple[int, str]]] = defaultdict(list)
-    for r in texts:
-        for f, p in classify(r["contents"], r["stars"]).items():
+    aspects = _model_aspects(store)
+    if aspects:
+        # 오픈소스 감성 모델(KoELECTRA) 판단 사용: 리뷰·요인별로 절 판단을 합산
+        by_review: dict[tuple[int, str], int] = defaultdict(int)
+        clause_of: dict[tuple[int, str, int], str] = {}
+        for a in aspects:
+            by_review[(a["review_id"], a["factor"])] += a["polarity"]
+            clause_of.setdefault((a["review_id"], a["factor"], a["polarity"]), a["clause"])
+        for (rid, f), v in by_review.items():
+            if v == 0:
+                continue
+            p = 1 if v > 0 else -1
             (pos if p > 0 else neg)[f] += 1
-            # 대표 문장: 그 요인이 들어간 절, 너무 짧거나 긴 것은 뒤로
-            clause = next((c for c in _clauses(r["contents"]) if any(w in c for w in FACTORS[f])), r["contents"])
+            clause = clause_of.get((rid, f, p), "")
             quotes[(f, p)].append((abs(len(clause) - 30), _quote(clause)))
+    else:
+        for r in texts:
+            for f, p in classify(r["contents"], r["stars"]).items():
+                (pos if p > 0 else neg)[f] += 1
+                # 대표 문장: 그 요인이 들어간 절, 너무 짧거나 긴 것은 뒤로
+                clause = next((c for c in _clauses(r["contents"]) if any(w in c for w in FACTORS[f])), r["contents"])
+                quotes[(f, p)].append((abs(len(clause) - 30), _quote(clause)))
 
     def top(counter, sign):
         out = []
@@ -108,7 +132,9 @@ def analyze_reviews(store_name: str, limit_quotes: int = 2) -> dict:
         "stars_distribution": {f"{k}점": dist.get(k, 0) for k in range(5, 0, -1)},
         "strengths": top(pos, 1)[:4],
         "complaints": top(neg, -1)[:4],
-        "method": "규칙 기반 요인 분류 (요인 단어 + 긍정/부정 표현, 애매하면 별점). 작성자 정보는 저장·출력하지 않음.",
+        "method": ("요인은 규칙(요인 단어)으로 찾고, 긍정/부정은 오픈소스 한국어 감성 모델(KoELECTRA, Copycats/koelectra-base-v3-"
+                   "generalized-sentiment-analysis)로 판단. 확신이 낮으면 별점으로 보완." if aspects else
+                   "규칙 기반 요인 분류 (요인 단어 + 긍정/부정 표현, 애매하면 별점).") + " 작성자 정보는 저장·출력하지 않음.",
         "notes": ["2021년 구글 리뷰(검증용 데이터)이며 현재 가게 상황과 다를 수 있음"],
         "sources": db.cite("reviews"),
     }

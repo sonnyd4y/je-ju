@@ -14,3 +14,7 @@ scripts/
 *.xlsx
 *.md
 asdf.py
+data/processed/jeju_corrupt_backup.db
+data/processed/naver_check_recovered.json
+data/processed/*.db-wal
+data/processed/*.db-shm
