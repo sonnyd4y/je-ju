@@ -55,7 +55,10 @@
   nav button[aria-current="page"] { background: var(--sea-soft); color: var(--sea); }
   nav .foot { margin-top: auto; font-size: .78em; color: var(--muted); padding: 10px 14px; }
 
-  main { overflow-y: auto; min-width: 0; position: relative; }
+  main { overflow-y: auto; overflow-x: hidden; min-width: 0; position: relative; }
+  .view > * { max-width: 100%; }
+  .bubble, .card, .tl .body { min-width: 0; }
+  .bubble table { display: block; overflow-x: auto; }
   .view { display: none; padding: 24px; max-width: 980px; margin: 0 auto; }
   .view.active { display: block; }
   .view.full { max-width: none; padding: 0; height: 100%; }
@@ -82,7 +85,9 @@
   @media (max-width: 860px) {
     /* 휴대폰: 선택 줄을 한 줄 가로 스크롤로 → 결과가 첫 화면에 보이게 */
     .controls { gap: 10px; padding: 14px; }
-    .controls .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -14px; padding: 0 14px 2px; }
+    /* 가로 스크롤 줄이 부모를 넓히지 않도록 폭 제한 (min-width:0 없으면 그리드 칸이 내용만큼 늘어남) */
+    .controls, .controls > *, .controls .row, .controls .row > * { min-width: 0; max-width: 100%; }
+    .controls .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -14px; padding: 0 14px 2px; max-width: calc(100% + 28px); }
     .controls .chips::-webkit-scrollbar { display: none; }
     .controls .chip { min-height: 36px; padding: 6px 12px; }
     .controls label { margin-bottom: 4px; }
@@ -309,7 +314,7 @@
             <button type="button" class="icon-btn mic" id="micBtn" title="말로 입력" aria-label="말로 입력" hidden>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
             </button>
-            <textarea id="input" rows="1" placeholder="무엇을 도와드릴까요?" aria-label="메시지"></textarea>
+            <textarea id="input" rows="1" placeholder="물어보세요" aria-label="메시지"></textarea>
             <button type="submit" class="icon-btn send" id="sendBtn" aria-label="보내기">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
             </button>
