@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>제주 동네가게 도우미</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0f5c6e">
+<link rel="icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+<style>
+  :root {
+    --bg: #f6f1e7; --surface: #ffffff; --ink: #1d1b18; --muted: #6b645a; --line: #e4dccd;
+    --accent: #c9530a; --accent-ink: #ffffff; --sea: #0f5c6e; --sea-soft: #e3f0f2;
+    --user: #0f5c6e; --user-ink: #ffffff; --ok: #1f7a3d;
+    --fs: 18px; --radius: 18px;
+  }
+  body.large { --fs: 22px; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg); color: var(--ink); font-size: var(--fs); line-height: 1.6;
+    font-family: "Pretendard", "Malgun Gothic", "맑은 고딕", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    display: flex; flex-direction: column;
+  }
+  button { font: inherit; cursor: pointer; }
+
+  /* ---------- 상단 ---------- */
+  header {
+    position: sticky; top: 0; z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line);
+    padding: 10px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  .brand { font-weight: 800; font-size: 1.1em; margin-right: auto; display: flex; align-items: center; gap: 8px; }
+  .brand .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--accent); display: inline-block; }
+  .seg { display: inline-flex; background: var(--bg); border-radius: 999px; padding: 4px; }
+  .seg { flex-shrink: 0; }
+  .seg button { border: 0; background: transparent; padding: 8px 16px; border-radius: 999px; font-weight: 700; color: var(--muted); min-height: 44px; white-space: nowrap; }
+  .seg button[aria-pressed="true"] { background: var(--sea); color: #fff; }
+  .ghost { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 8px 14px; min-height: 44px; font-weight: 600; }
+
+  /* ---------- 대화 ---------- */
+  main { flex: 1; overflow-y: auto; padding: 20px 16px 8px; }
+  .thread { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+  .msg { display: flex; flex-direction: column; gap: 10px; }
+  .msg.user { align-items: flex-end; }
+  .bubble { max-width: 92%; padding: 14px 18px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); overflow-wrap: anywhere; }
+  .msg.user .bubble { background: var(--user); color: var(--user-ink); border-color: var(--user); white-space: pre-wrap; }
+  .msg.user img.attach { max-width: 220px; border-radius: 12px; border: 1px solid var(--line); }
+
+  .bubble h1, .bubble h2, .bubble h3 { font-size: 1.05em; margin: 14px 0 6px; }
+  .bubble p { margin: 0 0 10px; }
+  .bubble p:last-child { margin-bottom: 0; }
+  .bubble ul, .bubble ol { margin: 4px 0 10px; padding-left: 1.3em; }
+  .bubble li { margin: 2px 0; }
+  .bubble strong { color: var(--ink); }
+  .bubble table { border-collapse: collapse; margin: 8px 0 12px; width: 100%; font-size: .95em; }
+  .bubble th, .bubble td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; }
+  .bubble blockquote { margin: 8px 0; padding: 8px 14px; background: var(--sea-soft); border-left: 4px solid var(--sea); border-radius: 8px; }
+  .bubble code { background: var(--bg); padding: 1px 6px; border-radius: 6px; font-size: .9em; }
+  .bubble .source { display: block; margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: .78em; color: var(--muted); }
+  .bubble .glossary { display: block; margin-top: 8px; font-size: .85em; color: var(--muted); }
+
+  /* 진행 단계 */
+  .steps { max-width: 92%; font-size: .85em; color: var(--muted); background: transparent; }
+  .steps summary { cursor: pointer; list-style: none; padding: 4px 0; }
+  .steps summary::-webkit-details-marker { display: none; }
+  .steps ol { margin: 6px 0 0; padding-left: 1.2em; }
+  .steps li.done::marker { color: var(--ok); }
+  .steps li.err { color: var(--accent); }
+  .spinner { display: inline-block; width: .9em; height: .9em; border: 2px solid var(--line); border-top-color: var(--sea); border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -2px; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* 카드 이미지 */
+  .card-out { max-width: 92%; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; }
+  .card-out img { display: block; width: 100%; max-width: 440px; border-radius: 12px; margin: 0 auto; }
+  .card-out .meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 10px; font-size: .85em; color: var(--muted); flex-wrap: wrap; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-weight: 700; font-size: .85em; }
+  .badge.preview { background: #fde9d9; color: var(--accent); }
+  .badge.final { background: #dcefe2; color: var(--ok); }
+  .actions { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+  .btn { border: 0; border-radius: 14px; padding: 12px 20px; min-height: 52px; font-weight: 800; }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); flex: 1; }
+  .btn.secondary { background: var(--bg); color: var(--ink); border: 1px solid var(--line); flex: 1; }
+  .btn:disabled { opacity: .5; cursor: default; }
+
+  .error { max-width: 92%; background: #fff1ec; border: 1px solid #f3c3ad; color: #8a2e0a; border-radius: var(--radius); padding: 12px 16px; }
+
+  /* 처음 화면 */
+  .welcome { text-align: center; padding: 28px 8px 8px; }
+  .welcome h1 { font-size: 1.5em; margin: 0 0 6px; }
+  .welcome p { color: var(--muted); margin: 0 0 18px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+  .chip { border: 1px solid var(--line); background: var(--surface); border-radius: 14px; padding: 12px 16px; min-height: 48px; text-align: left; max-width: 340px; }
+  .chip:hover { border-color: var(--sea); }
+
+  /* ---------- 입력 ---------- */
+  footer { background: var(--surface); border-top: 1px solid var(--line); padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); }
+  .composer { max-width: 760px; margin: 0 auto; display: flex; gap: 10px; align-items: flex-end; }
+  .composer textarea {
+    flex: 1; resize: none; font: inherit; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line);
+    min-height: 52px; max-height: 180px; background: var(--bg); color: var(--ink);
+  }
+  .composer textarea:focus { outline: 2px solid var(--sea); border-color: transparent; }
+  .icon-btn { width: 52px; height: 52px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; flex-shrink: 0; }
+  .icon-btn svg { width: 26px; height: 26px; }
+  .send { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .send:disabled { opacity: .5; }
+  .attach-preview { max-width: 760px; margin: 0 auto 8px; display: none; align-items: center; gap: 10px; font-size: .85em; color: var(--muted); }
+  .attach-preview img { height: 56px; border-radius: 8px; border: 1px solid var(--line); }
+  .attach-preview button { border: 0; background: none; color: var(--accent); font-weight: 700; }
+
+  .bubble td:first-child, .bubble th { white-space: nowrap; }
+
+  @media (max-width: 560px) {
+    header { padding: 8px 10px; gap: 6px; flex-wrap: nowrap; }
+    .brand { font-size: .95em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+    .brand .dot { display: none; }
+    .seg button { padding: 6px 10px; }
+    .ghost { padding: 6px 10px; font-size: .8em; white-space: nowrap; }
+    #newBtn { display: none; }
+    .bubble, .card-out, .steps, .error { max-width: 100%; }
+    .bubble { padding: 12px 14px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="dot"></span>제주 동네가게 도우미<span class="full"></span></div>
+  <div class="seg" role="group" aria-label="사용자 유형">
+    <button data-mode="owner" aria-pressed="true">사장님</button>
+    <button data-mode="tourist" aria-pressed="false">관광객</button>
+  </div>
+  <button class="ghost" id="fontBtn" aria-pressed="false">글자 크게</button>
+  <button class="ghost" id="newBtn">새 대화</button>
+</header>
+
+<main id="scroll">
+  <div class="thread" id="thread"></div>
+</main>
+
+<footer>
+  <div class="attach-preview" id="attachPreview"><img alt=""><span>사진 1장 첨부됨</span><button id="attachClear">빼기</button></div>
+  <form class="composer" id="form">
+    <input type="file" id="file" accept="image/*" hidden>
+    <button type="button" class="icon-btn" id="attachBtn" aria-label="사진 올리기" title="사진 올리기 (메뉴판, 음식 사진)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h3l2-3h6l2 3h3v13H4z"/><circle cx="12" cy="13" r="4"/></svg>
+    </button>
+    <textarea id="input" rows="1" placeholder="무엇을 도와드릴까요?" aria-label="메시지"></textarea>
+    <button type="submit" class="icon-btn send" id="sendBtn" aria-label="보내기">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </button>
+  </form>
+</footer>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const thread = $("#thread"), scroller = $("#scroll"), input = $("#input"), sendBtn = $("#sendBtn");
+let mode = "owner", sessionId = "", busy = false, attached = null;
+
+const STEP_LABEL = {
+  find_store: "가게를 찾고 있어요", search_stores: "가게 목록을 보고 있어요", area_insight: "동네 손님을 분석하고 있어요",
+  predict_crowd: "붐비는 시간을 예측하고 있어요", resident_balance: "동네 붐빔 정도를 보고 있어요",
+  check_naver_listed: "네이버 지도 등록을 확인하고 있어요", analyze_reviews: "손님 리뷰를 읽고 있어요",
+  marketing_brief: "홍보 계획을 세우고 있어요", save_draft: "초안을 저장하고 있어요", decide_draft: "확정하고 있어요",
+  render_card: "이미지를 만들고 있어요", generate_background: "배경 그림을 그리고 있어요 (20초쯤 걸려요)", list_drafts: "이전 기록을 보고 있어요",
+};
+const STARTERS = {
+  owner: [
+    "애월 고이정 사장이에요. 이번 주말에 인스타그램에 올릴 홍보 이미지 만들어 주세요",
+    "우리 가게 네이버 지도에 나와 있는지 봐 주세요 (애월 콩지쿡)",
+    "연동에서 식당 하는데 우리 동네는 언제, 어떤 손님이 많아요?",
+    "메뉴판 사진을 올리면 보기 좋은 메뉴판으로 다시 만들어 드려요",
+  ],
+  tourist: [
+    "토요일에 애월에서 점심 먹으려는데 언제 가면 덜 붐벼요?",
+    "구좌에서 사람 많지 않은 현지 한식당 추천해 주세요",
+    "애월에서 네이버에도 잘 안 나오는 숨은 동네 식당 알려 주세요",
+  ],
+};
+
+marked.setOptions({ breaks: true, gfm: true });
+
+function md(text) {
+  // "근거:" 줄과 "※ 용어 풀이" 줄은 작게
+  const lines = text.split("\n");
+  let source = "", glossary = "";
+  const body = lines.filter((l) => {
+    const t = l.replace(/^\**|\**$/g, "").trim();
+    if (/^근거\s*[:：]/.test(t)) { source = t; return false; }
+    if (/^※\s*용어/.test(t)) { glossary = t; return false; }
+    return true;
+  }).join("\n");
+  let html = DOMPurify.sanitize(marked.parse(body));
+  if (glossary) html += `<span class="glossary">${DOMPurify.sanitize(glossary)}</span>`;
+  if (source) html += `<span class="source">${DOMPurify.sanitize(source)}</span>`;
+  return html;
+}
+
+function scrollDown() { scroller.scrollTo({ top: scroller.scrollHeight, behavior: "smooth" }); }
+
+function welcome() {
+  thread.innerHTML = "";
+  const w = document.createElement("div");
+  w.className = "welcome";
+  w.innerHTML = mode === "owner"
+    ? `<h1>사장님, 무엇을 도와드릴까요?</h1><p>가게 확인, 손님 분석, 메뉴판·홍보 이미지까지 말로 부탁하세요.</p>`
+    : `<h1>제주에서 덜 붐비는 동네 식당 찾기</h1><p>지역과 시간만 말하면 데이터로 골라 드려요.</p>`;
+  const chips = document.createElement("div");
+  chips.className = "chips";
+  STARTERS[mode].forEach((t) => {
+    const b = document.createElement("button");
+    b.className = "chip"; b.textContent = t;
+    b.onclick = () => { if (t.startsWith("메뉴판 사진")) { $("#file").click(); return; } send(t); };
+    chips.appendChild(b);
+  });
+  w.appendChild(chips);
+  thread.appendChild(w);
+}
+
+function addUser(text, imgUrl) {
+  thread.querySelector(".welcome")?.remove();
+  const m = document.createElement("div");
+  m.className = "msg user";
+  if (imgUrl) { const i = document.createElement("img"); i.className = "attach"; i.src = imgUrl; m.appendChild(i); }
+  if (text) { const b = document.createElement("div"); b.className = "bubble"; b.textContent = text; m.appendChild(b); }
+  thread.appendChild(m); scrollDown();
+}
+
+function newAgentTurn() {
+  const m = document.createElement("div");
+  m.className = "msg agent";
+  const steps = document.createElement("details");
+  steps.className = "steps"; steps.hidden = true;
+  steps.innerHTML = `<summary><span class="spinner"></span><span class="label">생각하고 있어요</span></summary><ol></ol>`;
+  m.appendChild(steps);
+  thread.appendChild(m);
+  return { el: m, steps, bubble: null, text: "" };
+}
+
+function stepStart(turn, ev) {
+  turn.steps.hidden = false;
+  const li = document.createElement("li");
+  li.dataset.id = ev.id;
+  li.textContent = STEP_LABEL[ev.name] || ev.name;
+  turn.steps.querySelector("ol").appendChild(li);
+  turn.steps.querySelector(".label").textContent = li.textContent + "…";
+}
+
+function stepDone(turn, ev) {
+  const li = turn.steps.querySelector(`li[data-id="${ev.id}"]`);
+  if (li) li.className = ev.is_error ? "err" : "done";
+  if (ev.name === "render_card" && !ev.is_error && ev.result.image) addCard(turn, ev.result);
+}
+
+function cardUrl(path) { return "/api/cards/" + path.split("/").pop(); }
+
+function addCard(turn, r) {
+  const box = document.createElement("div");
+  box.className = "card-out";
+  const url = cardUrl(r.image) + "?t=" + Date.now();
+  const kind = { feed: "인스타그램 피드 (1080×1080)", story: "스토리 (1080×1920)", menu: "메뉴판 (1080×1350)" }[r.format] || "";
+  box.innerHTML = `
+    <img src="${url}" alt="${kind} ${r.preview_only ? "미리보기" : "최종본"}">
+    <div class="meta">
+      <span><span class="badge ${r.preview_only ? "preview" : "final"}">${r.preview_only ? "미리보기" : "확정"}</span> ${kind}${r.uses_ai_background ? " · AI 생성 배경" : ""}</span>
+      <a href="${url}" download>내려받기</a>
+    </div>`;
+  if (r.preview_only) {
+    const a = document.createElement("div");
+    a.className = "actions";
+    const ok = document.createElement("button"); ok.className = "btn primary"; ok.textContent = "네, 이대로 확정해요";
+    const edit = document.createElement("button"); edit.className = "btn secondary"; edit.textContent = "고쳐 주세요";
+    ok.onclick = () => { a.querySelectorAll("button").forEach((b) => (b.disabled = true)); send("네, 이대로 확정해 주세요."); };
+    edit.onclick = () => { input.value = "이렇게 고쳐 주세요: "; input.focus(); autoGrow(); };
+    a.append(ok, edit);
+    box.appendChild(a);
+  }
+  turn.el.appendChild(box);
+  turn.bubble = null; // 카드 뒤 글은 새 말풍선으로
+  scrollDown();
+}
+
+function appendText(turn, t) {
+  if (!turn.bubble) {
+    turn.bubble = document.createElement("div");
+    turn.bubble.className = "bubble";
+    turn.text = "";
+    turn.el.appendChild(turn.bubble);
+  }
+  turn.text += t;
+  turn.bubble.innerHTML = md(turn.text);
+  scrollDown();
+}
+
+function finishTurn(turn) {
+  const sp = turn.steps.querySelector(".spinner");
+  if (sp) sp.remove();
+  const n = turn.steps.querySelectorAll("li").length;
+  turn.steps.querySelector(".label").textContent = n ? `데이터 ${n}번 확인함 · 자세히 보기` : "";
+}
+
+async function send(text) {
+  if (busy) return;
+  text = (text ?? input.value).trim();
+  if (!text && !attached) return;
+  busy = true; sendBtn.disabled = true;
+  const file = attached;
+  addUser(text, file ? URL.createObjectURL(file) : null);
+  input.value = ""; autoGrow(); clearAttach();
+
+  const fd = new FormData();
+  fd.append("message", text); fd.append("mode", mode); fd.append("session_id", sessionId);
+  if (file) fd.append("image", file);
+
+  const turn = newAgentTurn();
+  try {
+    let code = "";
+    try { code = localStorage.getItem("accessCode") || ""; } catch {}
+    let res = await fetch("/api/chat", { method: "POST", body: fd, headers: code ? { "X-Access-Code": code } : {} });
+    if (res.status === 401) {
+      code = (prompt("데모 접속 코드를 입력해 주세요 (제출 페이지에 안내돼 있어요)") || "").trim();
+      try { localStorage.setItem("accessCode", code); } catch {}
+      res = await fetch("/api/chat", { method: "POST", body: fd, headers: { "X-Access-Code": code } });
+    }
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || `오류 ${res.status}`);
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = "";
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf("\n\n")) >= 0) {
+        const chunk = buf.slice(0, i); buf = buf.slice(i + 2);
+        if (!chunk.startsWith("data: ")) continue;
+        const ev = JSON.parse(chunk.slice(6));
+        if (ev.type === "session") sessionId = ev.session_id;
+        else if (ev.type === "text") appendText(turn, ev.text);
+        else if (ev.type === "tool_call") { stepStart(turn, ev); turn.bubble = null; }
+        else if (ev.type === "tool_result") stepDone(turn, ev);
+        else if (ev.type === "error") showError(turn, ev.message);
+      }
+    }
+  } catch (e) {
+    showError(turn, e.message || "연결이 끊겼어요. 다시 시도해 주세요.");
+  } finally {
+    finishTurn(turn);
+    busy = false; sendBtn.disabled = false; input.focus();
+  }
+}
+
+function showError(turn, msg) {
+  const d = document.createElement("div");
+  d.className = "error"; d.textContent = msg;
+  turn.el.appendChild(d); scrollDown();
+}
+
+// ---------- 입력창 ----------
+function autoGrow() { input.style.height = "auto"; input.style.height = Math.min(input.scrollHeight, 180) + "px"; }
+input.addEventListener("input", autoGrow);
+input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); }
+});
+$("#form").addEventListener("submit", (e) => { e.preventDefault(); send(); });
+
+$("#attachBtn").onclick = () => $("#file").click();
+$("#file").onchange = (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  if (f.size > 5 * 1024 * 1024) { alert("사진은 5MB 이하로 올려 주세요."); return; }
+  attached = f;
+  const p = $("#attachPreview");
+  p.querySelector("img").src = URL.createObjectURL(f);
+  p.style.display = "flex";
+  if (!input.value) input.value = mode === "owner" ? "이 사진으로 메뉴판(또는 홍보 이미지) 만들어 주세요. 가게 이름은 " : "";
+  input.focus(); autoGrow();
+};
+function clearAttach() { attached = null; $("#file").value = ""; $("#attachPreview").style.display = "none"; }
+$("#attachClear").onclick = (e) => { e.preventDefault(); clearAttach(); };
+
+// ---------- 상단 버튼 ----------
+document.querySelectorAll(".seg button").forEach((b) => {
+  b.onclick = () => {
+    if (busy || b.dataset.mode === mode) return;
+    mode = b.dataset.mode; sessionId = "";
+    document.querySelectorAll(".seg button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    welcome();
+  };
+});
+$("#newBtn").onclick = () => { if (!busy) { sessionId = ""; welcome(); } };
+$("#fontBtn").onclick = (e) => {
+  const on = document.body.classList.toggle("large");
+  e.target.setAttribute("aria-pressed", String(on));
+  e.target.textContent = on ? "글자 보통" : "글자 크게";
+  try { localStorage.setItem("large", on ? "1" : ""); } catch {}
+};
+try { if (localStorage.getItem("large")) $("#fontBtn").click(); } catch {}
+
+welcome();
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+</script>
+</body>
+</html>

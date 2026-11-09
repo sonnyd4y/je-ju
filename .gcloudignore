@@ -1,0 +1,16 @@
+# Cloud Run 빌드에 올릴 파일만 남긴다 (키·원본 데이터 제외)
+.env
+.git/
+.gitignore
+**/__pycache__/
+.pytest_cache/
+data/raw/
+data/meta/
+data/sample/
+data/output/
+docs/
+tests/
+scripts/
+*.xlsx
+*.md
+asdf.py

@@ -13,6 +13,9 @@ from pathlib import Path
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+from app.data.regions import admin_of  # noqa: E402
+
 sys.stdout.reconfigure(encoding="utf-8")
 
 COLS = {
@@ -62,7 +65,14 @@ def emd_of(addr):
     if not isinstance(addr, str):
         return None, None
     m = re.search(r"(제주시|서귀포시)\s+(\S+?(?:읍|면|동))(?:\s|$)", addr)
-    return (m.group(1), m.group(2)) if m else (None, None)
+    if m:
+        return m.group(1), m.group(2)
+    # 도로명주소는 끝 괄호 안에 동 이름이 있다: "... 구남로2길 46, 1층 (아라일동)"
+    c = re.search(r"(제주시|서귀포시)", addr)
+    d = re.search(r"\(([^()]*?(?:동|리))(?:,[^()]*)?\)\s*$", addr)
+    if c and d and d.group(1).endswith("동"):
+        return c.group(1), d.group(1)
+    return (c.group(1) if c else None), None
 
 
 def main():
@@ -74,9 +84,12 @@ def main():
             df[c] = to_date(df[c])
     df["area_m2"] = pd.to_numeric(df["area_m2"], errors="coerce")
     df["name"] = df["name"].str.strip()
-    city_emd = df["addr_jibun"].fillna(df["addr_road"]).map(emd_of)
-    df["city"] = [c for c, _ in city_emd]
-    df["emd"] = [e for _, e in city_emd]
+    jibun = df["addr_jibun"].map(emd_of)
+    road = df["addr_road"].map(emd_of)
+    df["city"] = [j[0] or r[0] for j, r in zip(jibun, road)]
+    df["emd"] = [j[1] or r[1] for j, r in zip(jibun, road)]
+    # 유동인구(583)와 연결하기 위한 행정동. 여러 행정동에 걸치면 쉼표로 묶는다 (예: 서귀동)
+    df["admin_emd"] = [",".join(admin_of(c, e)) or None for c, e in zip(df["city"], df["emd"])]
     df["is_open"] = df["status"].fillna("").str.startswith("영업").astype(int)
     df["geocode_addr"] = df["addr_road"].fillna(df["addr_jibun"])
     df["lat"] = None
@@ -89,6 +102,15 @@ def main():
         df.to_sql("stores", con, if_exists="replace", index=False)
         con.execute("CREATE INDEX IF NOT EXISTS ix_stores_emd ON stores(emd)")
         con.execute("CREATE INDEX IF NOT EXISTS ix_stores_open ON stores(open_date)")
+        # 이전에 확인한 네이버 등록 여부·좌표는 다시 반영 (scripts/check_naver.py 결과)
+        has = con.execute("SELECT 1 FROM sqlite_master WHERE name='naver_check'").fetchone()
+        if has:
+            con.execute(
+                "UPDATE stores SET naver_listed = (SELECT CASE status WHEN 1 THEN 1 WHEN 0 THEN 0 END FROM naver_check n WHERE n.store_id = stores.store_id), "
+                "lat = (SELECT lat FROM naver_check n WHERE n.store_id = stores.store_id), "
+                "lng = (SELECT lng FROM naver_check n WHERE n.store_id = stores.store_id) "
+                "WHERE store_id IN (SELECT store_id FROM naver_check)"
+            )
 
     print(f"원본: {src.name} ({'전체' if mode == 'full' else '미리보기 샘플'})")
     print(f"저장: {out}  stores {len(df)}건, 영업중 {df['is_open'].sum()}건")

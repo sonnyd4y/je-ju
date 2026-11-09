@@ -1,0 +1,14 @@
+{
+  "name": "제주 동네가게 도우미",
+  "short_name": "동네가게",
+  "description": "공공데이터로 제주 동네 식당을 찾고, 사장님 홍보를 돕는 AI Agent",
+  "lang": "ko",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6f1e7",
+  "theme_color": "#0f5c6e",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

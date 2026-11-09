@@ -93,16 +93,23 @@ def fetch(i, project_key, start=None, end=None):
                 break
             chunks.append((p.strftime("%Y-%m"), {"startDate": a.strftime(fmt), "endDate": b.strftime(fmt)}))
 
-    for tag, params in chunks:
-        part = parts / f"{tag}.csv"
-        if part.exists() and tag != "all":
-            print(f"  {tag}: 이미 받음, 건너뜀")
-            continue
-        rows, total = fetch_all_pages(data_key, project_key, params)
-        pd.DataFrame(rows).to_csv(part, index=False, encoding="utf-8-sig")
-        print(f"  {tag}: {len(rows)}건 (서버 기준 {total}건)")
+    try:
+        for tag, params in chunks:
+            part = parts / f"{tag}.csv"
+            if part.exists() and tag != "all":
+                print(f"  {tag}: 이미 받음, 건너뜀")
+                continue
+            rows, total = fetch_all_pages(data_key, project_key, params)
+            pd.DataFrame(rows).to_csv(part, index=False, encoding="utf-8-sig")
+            print(f"  {tag}: {len(rows)}건 (서버 기준 {total}건)")
+    finally:
+        merge(i, out_dir, parts)  # 쿼터로 중단돼도 받은 달까지는 합본을 만든다
 
+
+def merge(i, out_dir, parts):
     files = sorted(parts.glob("*.csv"))
+    if not files:
+        return
     df = pd.concat([pd.read_csv(f, dtype=str) for f in files if f.stat().st_size > 3], ignore_index=True)
     df.to_csv(out_dir / f"{i}_api.csv", index=False, encoding="utf-8-sig")
     print(f"  → 합본 {len(df)}건: data/raw/{i}/{i}_api.csv")

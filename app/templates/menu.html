@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  :root { --ink: #1b1b1b; --paper: #fff8ec; --accent: #d9580b; --line: #e9d9bf; --muted: #6b5f50; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 1080px; height: 1350px; color: var(--ink);
+    background: var(--paper) {% if bg %}url("{{ bg }}") center / cover no-repeat{% endif %};
+    font-family: "Malgun Gothic", "맑은 고딕", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    position: relative; overflow: hidden;
+  }
+  .frame { position: absolute; inset: 36px; border: 6px solid var(--ink); border-radius: 28px; padding: 64px 72px; display: flex; flex-direction: column;
+           background: rgba(255, 248, 236, {{ 0.94 if bg else 1 }}); }
+  .ai { position: absolute; right: 18px; top: 8px; font-size: 18px; color: rgba(255,255,255,.9); background: rgba(0,0,0,.35); padding: 3px 12px; border-radius: 999px; }
+  .eyebrow { font-size: 30px; font-weight: 700; color: var(--accent); letter-spacing: 4px; }
+  h1 { font-size: {{ title_size }}px; font-weight: 800; line-height: 1.15; margin-top: 10px; word-break: keep-all; }
+  .sub { font-size: 32px; color: var(--muted); margin-top: 14px; word-break: keep-all; }
+  .rule { height: 6px; background: var(--ink); margin: 40px 0 24px; border-radius: 3px; }
+  ul { list-style: none; flex: 1; display: grid; grid-template-columns: {{ '1fr 1fr' if two_col else '1fr' }}; column-gap: 56px; align-content: start; }
+  li { display: flex; align-items: baseline; padding: {{ row_pad }}px 0; border-bottom: 3px dashed var(--line); }
+  .name { font-size: {{ item_size }}px; font-weight: 800; word-break: keep-all; }
+  .note { display: block; font-size: {{ (item_size * 0.55) | int }}px; font-weight: 400; color: var(--muted); margin-top: 4px; }
+  .dots { flex: 1; }
+  .price { font-size: {{ item_size }}px; font-weight: 800; color: var(--accent); white-space: nowrap; padding-left: 20px; }
+  .won { font-size: {{ (item_size * 0.6) | int }}px; color: var(--ink); margin-left: 4px; }
+  .body { font-size: 30px; line-height: 1.5; color: var(--muted); margin-top: 18px; word-break: keep-all; }
+  .foot { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 28px; font-size: 26px; color: var(--muted); }
+  .foot b { color: var(--ink); }
+  .watermark {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-24deg);
+    font-size: 96px; font-weight: 900; color: rgba(217, 88, 11, 0.12); white-space: nowrap; pointer-events: none;
+  }
+</style>
+</head>
+<body>
+  <div class="frame">
+    <div class="eyebrow">MENU · 차림표</div>
+    <h1>{{ store_name }}</h1>
+    {% if title %}<div class="sub">{{ title }}</div>{% endif %}
+    <div class="rule"></div>
+    <ul>
+      {% for it in items %}
+      <li>
+        <span class="name">{{ it.name }}{% if it.note %}<span class="note">{{ it.note }}</span>{% endif %}</span>
+        <span class="dots"></span>
+        {% if it.price is not none %}<span class="price">{{ "{:,}".format(it.price) }}<span class="won">원</span></span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% if body %}<div class="body">{{ body }}</div>{% endif %}
+    <div class="foot">
+      <span>{{ address }}</span>
+      <span><b>{{ status_label }}</b></span>
+    </div>
+  </div>
+  {% if bg %}<div class="ai">AI 생성 배경</div>{% endif %}
+  {% if watermark %}<div class="watermark">미리보기 · 사장님 확인 전</div>{% endif %}
+</body>
+</html>
