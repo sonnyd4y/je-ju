@@ -31,7 +31,7 @@ def _weights(priority: str) -> dict:
 
 
 def recommend_stores(regions_text: str, category: str = "", when: str = "", time_slot: str = "",
-                     priority: str = "", limit: int = 5) -> dict:
+                     priority: str = "", limit: int = 5, require_coords: bool = False) -> dict:
     """여러 동네(쉼표로 구분)의 가게를 네 기준 가중 점수로 순위 매겨 추천한다."""
     names = [x.strip() for x in regions_text.replace("/", ",").split(",") if x.strip()]
     if not names:
@@ -53,6 +53,8 @@ def recommend_stores(regions_text: str, category: str = "", when: str = "", time
         sql = (f"SELECT store_id, name, category, open_date, addr_road, addr_jibun, emd, naver_listed, lat, lng FROM stores "
                f"WHERE status LIKE '영업%' AND city=? AND emd IN ({','.join('?' * len(r['legal']))})")
         params = [r["city"], *r["legal"]]
+        if require_coords:  # 지도·일정용: 좌표 있는 가게만
+            sql += " AND lat IS NOT NULL"
         if category:
             cats = CATEGORY_ALIASES.get(category.strip(), [category.strip()])
             sql += f" AND category IN ({','.join('?' * len(cats))})"

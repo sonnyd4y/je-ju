@@ -24,7 +24,7 @@ from pathlib import Path
 
 from app.agent import loop
 from app.data import db
-from app.tools import cards, insight, stores
+from app.tools import cards, drafts, insight, naver, places, recommend, reviews, stores
 
 app = FastAPI(title="제주 동네가게 AI Agent")
 app.add_middleware(
@@ -152,6 +152,56 @@ def api_card(name: str):
     if path.parent != cards.OUT.resolve() or path.suffix != ".png" or not path.exists():
         raise HTTPException(404, "이미지 없음")
     return FileResponse(path, media_type="image/png")
+
+
+@app.get("/api/recommend")
+def api_recommend(regions: str, category: str = "", when: str = "", time_slot: str = "", priority: str = "", limit: int = 8):
+    """관광객 추천 의사결정 모델을 AI 없이 바로 호출 (화면용, 비용 0)."""
+    return _ok(recommend.recommend_stores(regions, category, when, time_slot, priority, limit))
+
+
+@app.get("/api/naver")
+def api_naver(store_id: int):
+    return _ok(naver.check_naver_listed(store_id))
+
+
+@app.get("/api/map")
+def api_map(when: str = "", time_slot: str = "점심", kinds: str = "관광지,오름,해수욕장,명소", store_regions: str = ""):
+    return places.map_data(when, time_slot, kinds, store_regions)
+
+
+@app.get("/api/itinerary")
+def api_itinerary(regions: str, when: str = "", start: str = "10:00", stops: int = 3,
+                  kinds: str = "관광지,오름,해수욕장,명소", meals: str = "점심", category: str = ""):
+    return _ok(places.plan_itinerary(regions, when, start, stops, kinds, meals, category))
+
+
+@app.get("/api/store/{store_id}")
+def api_store(store_id: int):
+    """사장님 내 가게 화면: 가게 정보·네이버 등록·동네 손님·요일×시간 혼잡·리뷰 요약·만든 초안 (AI 없음)."""
+    rows = db.rows("SELECT store_id, name, category, open_date, status, city, emd, addr_road, addr_jibun, lat, lng "
+                   "FROM stores WHERE store_id=?", [store_id])
+    if not rows:
+        raise HTTPException(404, "가게 없음")
+    s = rows[0]
+    region = f"{s['city']} {s['emd']}"
+    rv = reviews.analyze_reviews(s["name"])
+    return {
+        "store": s,
+        "naver": naver.check_naver_listed(store_id),
+        "insight": insight.area_insight(region),
+        "crowd": insight.predict_crowd(region),
+        "reviews": rv if "error" not in rv else None,
+        "drafts": drafts.list_drafts(s["name"])["history"],
+    }
+
+
+@app.get("/api/regions")
+def api_regions():
+    """화면의 동네 선택용: 가게가 많은 읍면동 순."""
+    rows = db.rows("SELECT city, emd, count(*) n FROM stores WHERE status LIKE '영업%' AND emd IS NOT NULL "
+                   "GROUP BY 1, 2 ORDER BY n DESC")
+    return {"regions": [{"city": r["city"], "name": r["emd"], "stores": r["n"]} for r in rows]}
 
 
 @app.get("/api/balance")

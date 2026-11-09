@@ -36,7 +36,7 @@
 </head>
 <body>
   <div class="frame">
-    <div class="eyebrow">MENU · 차림표</div>
+    <div class="eyebrow">{{ eyebrow or "MENU · 차림표" }}</div>
     <h1>{{ store_name }}</h1>
     {% if title %}<div class="sub">{{ title }}</div>{% endif %}
     <div class="rule"></div>

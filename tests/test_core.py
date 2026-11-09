@@ -374,3 +374,42 @@ def test_recommender_is_deterministic_and_explained():
 def test_recommender_priority_shifts_weight():
     from app.tools.recommend import _weights
     assert _weights("숨은 가게")["hidden"] > _weights("")["hidden"]
+
+
+# ---------- 관광 장소·일정·지도·등록 자료 ----------
+
+@needs_db
+def test_itinerary_has_meal_and_travel_times():
+    from app.tools import places
+    r = places.plan_itinerary("애월", "토요일", "10:00", 3, meals="점심,저녁")
+    kinds = [p["kind"] for p in r["itinerary"]]
+    assert kinds.count("식사") == 2 and len(r["itinerary"]) == 5
+    meals = [p["store_id"] for p in r["itinerary"] if p["kind"] == "식사"]
+    assert len(set(meals)) == 2  # 점심·저녁 다른 가게
+    times = [p["arrive"] for p in r["itinerary"]]
+    assert times == sorted(times)
+
+
+@needs_db
+def test_map_data_and_place_crowd():
+    from app.tools import places
+    m = places.map_data("토요일", "점심")
+    assert len(m["areas"]) >= 40 and len(m["pois"]) > 100
+    assert all({"lat", "lng", "level"} <= set(a) for a in m["areas"])
+    c = places.place_crowd("성산일출봉", "2026-05-01")
+    assert c["level"] in ("한산", "보통", "붐빔") and c["by_month"]
+
+
+@needs_db
+def test_listing_kit_prefilled():
+    from app.tools.listing import make_listing_kit
+    sid = db.rows("SELECT store_id FROM stores WHERE name='고이정' AND status LIKE '영업%'")[0]["store_id"]
+    k = make_listing_kit(sid)
+    assert k["prefilled"]["업체명"] == "고이정" and k["owner_prepares"] and k["steps"]
+
+
+def test_today_menu_requires_items(temp_db):
+    from app.tools import drafts
+    assert "error" in drafts.save_draft("가게", "today", "오늘 메뉴")
+    ok = drafts.save_draft("가게", "today", "오늘 메뉴", items=[{"name": "갈치조림", "price": 25000}])
+    assert ok["status"] == "pending"

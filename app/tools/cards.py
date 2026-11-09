@@ -64,13 +64,14 @@ def build_html(d: dict, fmt: str = "feed") -> str:
     photo = _data_uri(UPLOADS / d["photo"]) if d.get("photo") else None
     watermark = d["status"] != "approved"
     status_label = "사장님 확인 완료" if not watermark else "미리보기"
-    if d["kind"] == "menu":
+    if d["kind"] in ("menu", "today"):
         items = d["items"]
         n = len(items)
         two_col = n > 9
         per_col = (n + 1) // 2 if two_col else n
         item_size = 52 if per_col <= 6 else 44 if per_col <= 8 else 38 if per_col <= 10 else 32
         return _env.get_template("menu.html").render(
+            eyebrow="TODAY · 오늘의 메뉴" if d["kind"] == "today" else "MENU · 차림표",
             store_name=d["store_name"], title=d.get("title") or "", body=d.get("body") or "",
             items=[{"name": i["name"], "price": i.get("price"), "note": i.get("note")} for i in items],
             two_col=two_col, item_size=item_size, row_pad=max(10, 30 - per_col * 2),
@@ -103,13 +104,13 @@ def render_card(draft_id: int, format: str = "") -> dict:
     d = drafts._public(hist[0])
     if d["status"] in ("rejected", "superseded"):
         return {"error": f"초안 {draft_id}는 {d['status']} 상태라 이미지를 만들지 않음"}
-    if d["kind"] == "menu" and not d["items"]:
+    if d["kind"] in ("menu", "today") and not d["items"]:
         return {"error": "메뉴판 초안에 메뉴(items)가 없음"}
 
     from playwright.sync_api import sync_playwright
 
-    fmt = "menu" if d["kind"] == "menu" else (format or "feed")
-    if fmt not in SIZES or (d["kind"] != "menu" and fmt == "menu"):
+    fmt = "menu" if d["kind"] in ("menu", "today") else (format or "feed")
+    if fmt not in SIZES or (d["kind"] not in ("menu", "today") and fmt == "menu"):
         return {"error": "홍보 카드 format은 feed 또는 story"}
     OUT.mkdir(parents=True, exist_ok=True)
     path = OUT / f"{draft_id}_{fmt}_{d['status']}.png"

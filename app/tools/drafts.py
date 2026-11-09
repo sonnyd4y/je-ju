@@ -12,7 +12,7 @@ from datetime import datetime
 
 from app.data import db
 
-KINDS = {"promo": "홍보 문구", "menu": "메뉴판", "notice": "안내문"}
+KINDS = {"promo": "홍보 문구", "menu": "메뉴판", "notice": "안내문", "today": "오늘의 메뉴", "intro": "소개글"}
 # 근거 없이 쓰면 안 되는 최상급·순위 표현 (표시광고 위험)
 BANNED = ["최고", "1위", "일등", "넘버원", "No.1", "유일", "제일 맛있", "가장 맛있", "원조", "전국 최초"]
 EVIDENCE_RE = re.compile(r"^(E\d+|사장님 말씀|사진)$")
@@ -80,7 +80,9 @@ def save_draft(store_name: str, kind: str, body: str, title: str = "", items: li
     if banned:
         return {"error": f"근거 없는 최상급·순위 표현 {banned} 은 쓸 수 없음. 데이터로 확인된 사실로 바꿀 것.",
                 "blocked_by": "unsupported_claim"}
-    if kind in ("promo", "notice"):
+    if kind in ("today", "menu") and not items:
+        return {"error": "메뉴판·오늘의 메뉴는 items(메뉴 이름·가격)가 필요함"}
+    if kind in ("promo", "notice", "intro"):
         if not claims:
             return {"error": "홍보 문구·안내문은 claims가 필요함: 문장마다 [{text, evidence}] (evidence는 E번호·'사장님 말씀'·'사진')"}
         for c in claims:

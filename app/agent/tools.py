@@ -2,7 +2,7 @@
 import json
 from typing import Any, Callable
 
-from app.tools import cards, drafts, imagegen, insight, marketing, naver, recommend, reviews, stores
+from app.tools import cards, drafts, imagegen, insight, listing, marketing, naver, places, recommend, reviews, stores
 
 REGION = {"type": "string", "description": "제주 읍·면·동 이름. 예: 애월읍, 애월, 연동, 이도2동, 서귀동, 중문"}
 
@@ -96,6 +96,37 @@ TOOLS = [
         recommend.recommend_stores,
     ),
     _tool(
+        "plan_itinerary",
+        "관광객 하루 일정: 고른 동네들의 덜 붐비는 관광 장소(오름·해수욕장·관광지·명소)와 추천 식당을 가까운 순으로 배치하고 "
+        "이동 시간(직선거리 기반 추정)을 붙인다. 점심 시간대가 붐비면 점심을 당긴다.",
+        {
+            "regions_text": {"type": "string", "description": "동네들, 쉼표 구분 (예: '한림, 한경')"},
+            "when": {"type": "string", "description": "날짜 또는 요일"},
+            "start": {"type": "string", "description": "출발 시각 HH:MM (기본 10:00)"},
+            "stops": {"type": "integer", "description": "관광 장소 수 (기본 3)"},
+            "kinds": {"type": "string", "description": "장소 종류, 쉼표 구분: 관광지,오름,해수욕장,명소"},
+            "meals": {"type": "string", "description": "점심 / 점심,저녁"},
+            "category": {"type": "string", "description": "식당 업종 (선택)"},
+        },
+        ["regions_text"],
+        places.plan_itinerary,
+    ),
+    _tool(
+        "place_crowd",
+        "관광 장소(오름·해수욕장·관광지·명소)의 그 달 혼잡 정도와 가장 한산한 달 (와이파이·관광지 유입 데이터, 월 단위).",
+        {"name": {"type": "string", "description": "장소 이름 (예: 성산일출봉, 협재)"}, "when": {"type": "string"}},
+        ["name"],
+        places.place_crowd,
+    ),
+    _tool(
+        "make_listing_kit",
+        "네이버 지도(스마트플레이스) 등록 자료 묶음: 인허가로 채운 기본 정보, 사장님이 준비할 것, 등록 순서. "
+        "미등록 후보 가게 사장님께 등록을 도와드릴 때 사용하고, 소개글은 save_draft(kind=intro)로 초안을 만든다.",
+        {"store_id": {"type": "integer"}},
+        ["store_id"],
+        listing.make_listing_kit,
+    ),
+    _tool(
         "check_naver_listed",
         "가게가 네이버 지도에 등록돼 있는지 확인한다 (등록 / 확인 필요 / 미등록 후보). find_store로 얻은 store_id가 필요. "
         "미등록 후보면 사장님께 등록을 권하고 소개글·메뉴판 초안을 도와드릴 수 있다.",
@@ -126,7 +157,7 @@ TOOLS = [
         "메뉴 사진에서 읽은 메뉴·가격은 반드시 이 도구로 초안을 만들어 확인받는다.",
         {
             "store_name": {"type": "string", "description": "가게 이름"},
-            "kind": {"type": "string", "enum": list(drafts.KINDS), "description": "promo | menu | notice"},
+            "kind": {"type": "string", "enum": list(drafts.KINDS), "description": "promo 홍보 | menu 메뉴판 | today 오늘의 메뉴 | notice 안내문 | intro 소개글"},
             "title": {"type": "string", "description": "제목 또는 대표 문구 (선택)"},
             "body": {"type": "string", "description": "본문. 가게 이름·주소는 카드 아래에 자동으로 들어가므로 본문에 다시 쓰지 않는다"},
             "items": {

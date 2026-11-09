@@ -63,6 +63,20 @@ SCENARIOS = [
         "must_say": ["확인", "방문 전"],
     },
     {
+        "name": "관광객_하루일정",
+        "mode": "tourist",
+        "turns": ["한림이랑 한경 이번 토요일 하루 일정 짜 주세요. 점심은 현지 식당으로"],
+        "must_call": ["plan_itinerary"],
+        "must_say": ["추정", "예측", "패턴"],
+    },
+    {
+        "name": "사장님_네이버등록자료",
+        "mode": "owner",
+        "turns": ["애월 콩지쿡 사장인데 네이버 지도에 우리 가게 올리고 싶어요"],
+        "must_call": ["find_store", "make_listing_kit"],
+        "must_not_call": ["decide_draft"],
+    },
+    {
         "name": "범위밖_지역",
         "mode": "tourist",
         "turns": ["부산 해운대 맛집 알려줘"],

@@ -26,7 +26,9 @@
         ├─ marketing_brief                 마케팅 브리프 (진단·타깃·시점·메시지, 근거 번호 E1…)
         ├─ save_draft / decide_draft / list_drafts   초안(문장마다 근거) → 사람 승인 → 확정, 변경 이력
         ├─ generate_background             생성형 배경 (Gemini 나노바나나, 글자·음식·사람 없음)
-        └─ render_card                     메뉴판·피드·스토리 카드 PNG (템플릿, 글자·가격 정확)
+        ├─ render_card                     메뉴판·오늘의 메뉴·피드·스토리 카드 PNG (템플릿, 글자·가격 정확)
+        ├─ plan_itinerary / place_crowd    관광객 하루 일정 (관광지·오름·해수욕장 + 식당), 장소별 월 혼잡
+        └─ make_listing_kit                네이버 스마트플레이스 등록 자료 (인허가로 미리 채움)
 ```
 
 | Agent가 스스로 함 | 사람 승인 필요 |
@@ -34,6 +36,15 @@
 | 데이터 조회·분석, 후보 추천, 리뷰 분류, 초안 작성 | 메뉴 가격, 홍보 문구·안내문 확정 |
 
 승인 단계는 프롬프트뿐 아니라 **코드로 강제**합니다. 초안을 만든 같은 차례에서는 확정할 수 없고, 사용자가 답한 다음 차례에서만 `decide_draft`가 동작합니다 ([app/tools/drafts.py](app/tools/drafts.py)).
+
+## 화면 (웹 앱, 휴대폰 홈 화면 설치 가능)
+
+| 여행객 | 사장님 |
+|---|---|
+| **홈**: 동네·날짜·시간 고르면 동네별 혼잡 + 추천 식당 카드 (AI 없이 의사결정 모델 직접 호출) | **내 가게**: 네이버 등록 상태, 손님 많은 요일, 동네 유동인구 구성, 식당 시간대, 요일×시간 혼잡, 리뷰 요약, 만든 것 이력 |
+| **지도** (Leaflet + OpenStreetMap): 동네 혼잡 색 원, 관광지·오름·해수욕장·명소, 식당 위치 | **지도** |
+| **일정**: 덜 붐비는 관광 장소 + 식당, 이동 시간, 경로 지도 | **만들기**: 홍보 이미지, 메뉴판(사진), 오늘의 메뉴, 네이버 등록 자료, 만든 이미지 모음 |
+| **대화**: AI Agent. 도구 결과를 혼잡 막대·가게 카드·일정표로 표시, 음성 입력 | **대화**: 미리보기 이미지에 "확정 / 고쳐 주세요" 버튼 |
 
 ## 폴더
 
@@ -60,6 +71,8 @@ python scripts/fetch_hub_api.py         # API형 데이터 수집 (583, 591, 592
 python scripts/build_store_db.py        # 음식점 인허가 → jeju.db
 python scripts/build_insight_db.py      # 분석용 테이블 → jeju.db
 python scripts/check_naver.py 애월       # 지역 가게의 네이버 등록 여부 확인 (네이버 키 필요)
+python scripts/geocode_regions.py       # 읍면동 중심 좌표 (지도 혼잡 원)
+python scripts/build_pois.py            # 관광 장소 + 장소별 월 혼잡 (811·784·591·592·568)
 
 python scripts/train_demand.py          # 방문 수요 예측 모델 학습·검증 → data/processed/demand_model.joblib
 pip install -r requirements-ml.txt      # (선택) 리뷰 감성 모델용 PyTorch·transformers
