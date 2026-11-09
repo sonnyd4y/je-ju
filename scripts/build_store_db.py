@@ -113,6 +113,7 @@ def main():
     out = ROOT / "data/processed/jeju.db"
     with sqlite3.connect(out) as con:
         df.to_sql("stores", con, if_exists="replace", index=False)
+        con.execute("CREATE UNIQUE INDEX IF NOT EXISTS ix_stores_id ON stores(store_id)")  # store_id 로 갱신할 때 필수 (없으면 수만 건 갱신이 수십 분)
         con.execute("CREATE INDEX IF NOT EXISTS ix_stores_emd ON stores(emd)")
         con.execute("CREATE INDEX IF NOT EXISTS ix_stores_open ON stores(open_date)")
         # 이전에 확인한 네이버 등록 여부·좌표는 다시 반영 (scripts/check_naver.py 결과)
