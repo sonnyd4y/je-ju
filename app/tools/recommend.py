@@ -50,24 +50,36 @@ def recommend_stores(regions_text: str, category: str = "", when: str = "", time
         region_info.append({"region": r["label"], "crowd_level": lv, "balance": bal.get("level"),
                             "when": crowd["forecast"][0]["weekday"] + " " + crowd["forecast"][0]["time_slot"]
                             if crowd.get("forecast") else ""})
-        sql = (f"SELECT store_id, name, category, open_date, addr_road, addr_jibun, emd, naver_listed, lat, lng FROM stores "
-               f"WHERE status LIKE '영업%' AND city=? AND emd IN ({','.join('?' * len(r['legal']))})")
+        sql = (f"SELECT s.store_id, s.name, s.category, s.open_date, s.addr_road, s.addr_jibun, s.emd, s.naver_listed, s.lat, s.lng, "
+               f"n.status AS n_status, n.naver_title, n.addr_match FROM stores s LEFT JOIN naver_check n USING(store_id) "
+               f"WHERE s.status LIKE '영업%' AND s.city=? AND s.emd IN ({','.join('?' * len(r['legal']))})")
         params = [r["city"], *r["legal"]]
         if require_coords:  # 지도·일정용: 좌표 있는 가게만
-            sql += " AND lat IS NOT NULL"
+            sql += " AND s.lat IS NOT NULL"
         if category:
             cats = CATEGORY_ALIASES.get(category.strip(), [category.strip()])
-            sql += f" AND category IN ({','.join('?' * len(cats))})"
+            sql += f" AND s.category IN ({','.join('?' * len(cats))})"
             params += cats
         else:
-            sql += f" AND coalesce(category,'') NOT IN ({','.join('?' * len(NON_RESTAURANT))}, '기타 휴게음식점', '일반조리판매')"
+            sql += f" AND coalesce(s.category,'') NOT IN ({','.join('?' * len(NON_RESTAURANT))}, '기타 휴게음식점', '일반조리판매')"
             params += NON_RESTAURANT
         for s in db.rows(sql, params):
             years = max(0.0, (date.fromisoformat(asof) - date.fromisoformat(s["open_date"])).days / 365.25) if s["open_date"] else 0
+            # 네이버 상태: 등록 / 다른 상호로 등록(같은 주소) / 미등록 후보 / 확인 필요 / 미확인
+            if s["n_status"] == 1:
+                nv = "등록"
+            elif s["n_status"] == 2 and s["addr_match"]:
+                nv = "다른 상호로 등록"
+            elif s["n_status"] == 2:
+                nv = "확인 필요"
+            elif s["n_status"] == 0:
+                nv = "미등록 후보"
+            else:
+                nv = "미확인"
             sc = {
                 "quiet": LEVEL_SCORE.get(lv, 0.5),
                 "balance": BALANCE_SCORE.get(bal.get("level"), 0.8),
-                "hidden": HIDDEN_SCORE.get(s["naver_listed"], 0.6),
+                "hidden": {"미등록 후보": 1.0, "미확인": 0.6, "확인 필요": 0.5}.get(nv, 0.3),
                 "longevity": min(years / 10, 1.0),
             }
             total = sum(w[k] * v for k, v in sc.items())
@@ -75,7 +87,8 @@ def recommend_stores(regions_text: str, category: str = "", when: str = "", time
                 "store_id": s["store_id"], "name": s["name"], "category": s["category"], "region": r["label"],
                 "address": (s["addr_road"] or s["addr_jibun"] or "").replace("제주특별자치도 ", "").split(",")[0],
                 "years_open": round(years, 1),
-                "naver": {1: "등록", 0: "미등록 후보"}.get(s["naver_listed"], "미확인"),
+                "naver": nv,
+                "naver_name": s["naver_title"] if nv in ("등록", "다른 상호로 등록") and s["naver_title"] != s["name"] else None,
                 "lat": s["lat"], "lng": s["lng"],
                 "score": round(total, 3),
                 "score_parts": {CRITERIA[k]: round(w[k] * v, 3) for k, v in sc.items()},

@@ -177,6 +177,16 @@
   .move .line { width: 2px; height: 24px; background: var(--line); margin: 0 auto; }
   .move span { align-self: center; }
 
+  /* 일정 편집 */
+  .tl .edit { display: inline-flex; gap: 4px; }
+  .tl .edit button { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; min-width: 32px; height: 30px; font-weight: 800; }
+  .tl .edit button:disabled { opacity: .35; }
+  .tl select { min-height: 30px; padding: 2px 6px; border-radius: 8px; font-size: .95em; }
+  #planStart { min-height: 34px; padding: 2px 8px; }
+  .cands { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; max-height: 340px; overflow-y: auto; }
+  @media (max-width: 640px) { .cands { grid-template-columns: 1fr; } }
+  .cand { display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; text-align: left; border: 1px solid var(--line); background: var(--surface-2); border-radius: 10px; padding: 8px 10px; margin-top: 6px; }
+
   /* 지도 */
   #map { flex: 1; min-height: 300px; }
   .mini-map { height: 260px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); margin-top: 12px; }
@@ -185,6 +195,7 @@
   .map-legend { position: absolute; z-index: 500; left: 12px; bottom: 16px; right: 12px; max-width: 520px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; font-size: .78em; box-shadow: var(--shadow); }
   .map-legend span { display: inline-flex; align-items: center; gap: 5px; margin-right: 10px; }
   .map-legend i { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .area-pill { transform: translate(-50%, -50%); white-space: nowrap; color: #fff; font-weight: 800; font-size: 12px; padding: 3px 9px; border-radius: 999px; box-shadow: 0 1px 4px rgba(0,0,0,.35); border: 2px solid #fff; }
   .poi-icon { width: 30px; height: 30px; font-size: 16px; line-height: 26px; text-align: center; background: #fff; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
   .leaflet-popup-content { font-family: inherit; font-size: 14px; line-height: 1.5; }
 
@@ -279,7 +290,7 @@
     <section class="view full" id="v-map">
       <div class="map-bar" id="mapBar"></div>
       <div style="position:relative;flex:1;display:flex"><div id="map"></div>
-        <div class="map-legend"><span><i style="background:var(--quiet)"></i>한산</span><span><i style="background:var(--normal)"></i>보통</span><span><i style="background:var(--busy)"></i>붐빔</span><span>⛰오름 🏖해수욕장 🏛관광지 📍명소</span><br><span><i style="background:var(--accent)"></i>숨은 가게(네이버 미등록)</span><span><i style="background:var(--sea)"></i>네이버 등록</span><span><i style="background:#9a948a"></i>미확인</span></div>
+        <div class="map-legend"><span>동네 이름표 = 그 시간대 식당 혼잡</span><span>⛰오름 🏖해수욕장 🏛관광지 📍명소</span><br><span><i style="background:var(--accent)"></i>숨은 가게(네이버 미등록)</span><span><i style="background:var(--sea)"></i>네이버 등록</span><span><i style="background:#9a948a"></i>미확인</span></div>
       </div>
     </section>
     <section class="view" id="v-plan"></section>
@@ -325,15 +336,20 @@ async function api(path) {
 }
 const LV = (lv) => `<span class="badge lv-${esc((lv || "none").replace(/\s/g, ""))}">${esc(lv || "정보 없음")}</span>`;
 const LV_COLOR = { "한산": "#2f8f5b", "보통": "#c98a12", "붐빔": "#d2453f" };
-const NAVER_BADGE = (n) => n === "미등록 후보" ? `<span class="badge b-hidden">숨은 가게 · 네이버 미등록</span>`
-  : n === "등록" ? `<span class="badge b-listed">네이버 등록</span>` : `<span class="badge b-unknown">네이버 미확인</span>`;
+const NAVER_BADGE = (n) => n === "미등록 후보" ? `<span class="badge b-hidden">숨은 가게 · 네이버에 이 이름 없음</span>`
+  : n === "등록" ? `<span class="badge b-listed">네이버 등록</span>`
+  : n === "다른 상호로 등록" ? `<span class="badge b-listed">네이버엔 다른 상호로 등록</span>`
+  : `<span class="badge b-unknown">네이버 ${esc(n || "미확인")}</span>`;
 const naverSearch = (q) => `https://map.naver.com/p/search/${encodeURIComponent(q)}`;
 // 네이버에 없는 가게는 좌표로 길찾기 (카카오맵 URL은 이름·좌표만으로 열린다)
 const routeTo = (name, lat, lng) => `https://map.kakao.com/link/to/${encodeURIComponent(name)},${lat},${lng}`;
-function placeLinks(name, region, lat, lng, naver) {
-  if (naver === "등록" || lat == null) return `<a href="${naverSearch(name + " " + (region || ""))}" target="_blank" rel="noopener">네이버 지도에서 보기</a>`;
+function placeLinks(name, region, lat, lng, naver, naverName, address) {
+  if (naver === "등록" || naver === "다른 상호로 등록" || lat == null)
+    return `<a href="${naverSearch((naverName || name) + " " + (region || ""))}" target="_blank" rel="noopener">네이버 지도에서 보기</a>`;
+  // 네이버에서 이 이름으로 못 찾은 가게: 앱 지도 위치, 좌표 길찾기, 주소로 네이버 지도 (상호가 바뀌었으면 지금 가게가 보임)
   return `<button data-loc="${lat},${lng}" data-name="${esc(name)}">위치 보기</button>
-    <a href="${routeTo(name, lat, lng)}" target="_blank" rel="noopener">길찾기</a>`;
+    <a href="${routeTo(name, lat, lng)}" target="_blank" rel="noopener">길찾기</a>
+    ${address ? `<a href="${naverSearch("제주특별자치도 " + address)}" target="_blank" rel="noopener" title="상호가 바뀌었으면 지금 그 주소의 가게가 보여요">이 주소 네이버 지도로</a>` : ""}`;
 }
 function bindLoc(root) {
   root.querySelectorAll("[data-loc]").forEach((b) => (b.onclick = () => {
@@ -429,12 +445,13 @@ function storeCard(s, opts = {}) {
   const tot = w.reduce((a, b) => a + b, 0) || 1;
   return `<div class="card store">
     <div class="top"><div><div class="name">${esc(s.name)}</div>
+      ${s.naver_name ? `<div class="meta">네이버 상호: <b>${esc(s.naver_name)}</b></div>` : ""}
       <div class="meta">${esc(s.category || "")} · ${esc(s.region || "")}${s.years_open != null ? ` · ${Math.round(s.years_open)}년째` : ""}</div></div>
       ${s.score != null ? `<div class="score">${s.score.toFixed(2)}<small>추천 점수</small></div>` : ""}</div>
     <div class="row">${NAVER_BADGE(s.naver)}</div>
     ${w.length ? `<div class="parts" title="${esc(Object.entries(s.score_parts).map(([k, v]) => `${k} ${v}`).join(" · "))}">${w.map((v) => `<i style="width:${(v / tot) * 100}%"></i>`).join("")}</div>` : ""}
     <div class="meta">${esc(s.address || "")}</div>
-    <div class="acts">${placeLinks(s.name, s.region, s.lat, s.lng, s.naver)}
+    <div class="acts">${placeLinks(s.name, s.region, s.lat, s.lng, s.naver, s.naver_name, s.address)}
       ${opts.ask !== false ? `<button data-ask="${esc(s.name)} (${esc(s.region || "")}) 어떤 곳이에요? 언제 가면 덜 붐벼요?">AI에게 물어보기</button>` : ""}</div>
   </div>`;
 }
@@ -469,19 +486,21 @@ async function renderHome() {
 
 /* ================= 지도 ================= */
 let mapObj = null, mapLayers = {}, mapCache = { key: "", data: null };
-const MAP_KINDS = [["areas", "동네 혼잡"], ["관광지", "🏛 관광지"], ["오름", "⛰ 오름"], ["해수욕장", "🏖 해수욕장"], ["명소", "📍 명소"], ["stores", "● 식당"]];
-let mapOn = store.get("mapOn", ["areas", "관광지", "해수욕장", "명소", "stores"]);
+const MAP_KINDS = [["lv-한산", "🟢 한산 동네"], ["lv-보통", "🟡 보통 동네"], ["lv-붐빔", "🔴 붐빔 동네"], ["관광지", "🏛 관광지"], ["오름", "⛰ 오름"], ["해수욕장", "🏖 해수욕장"], ["명소", "📍 명소"], ["stores", "● 식당"]];
+let mapOn = store.get("mapOn2", ["lv-한산", "lv-보통", "lv-붐빔", "관광지", "해수욕장", "stores"]);
 function renderMap() {
   $("#mapBar").innerHTML = `<div class="chips">${MAP_KINDS.map(([k, l]) => `<button class="chip" data-k="${k}" aria-pressed="${mapOn.includes(k)}">${l}</button>`).join("")}</div>
     <span class="small muted" style="white-space:nowrap">식당: ${esc(state.regions.join("·"))}</span>
     <div class="chips" style="margin-left:auto">${SLOTS.map((s) => `<button class="chip" data-s="${s}" aria-pressed="${state.slot === s}">${s}</button>`).join("")}</div>`;
   $("#mapBar").querySelectorAll("[data-k]").forEach((b) => (b.onclick = () => {
-    const k = b.dataset.k; mapOn = mapOn.includes(k) ? mapOn.filter((x) => x !== k) : [...mapOn, k]; store.set("mapOn", mapOn);
+    const k = b.dataset.k; mapOn = mapOn.includes(k) ? mapOn.filter((x) => x !== k) : [...mapOn, k]; store.set("mapOn2", mapOn);
     b.setAttribute("aria-pressed", String(mapOn.includes(k))); drawMap();
   }));
   $("#mapBar").querySelectorAll("[data-s]").forEach((b) => (b.onclick = () => { state.slot = b.dataset.s; store.set("slot", state.slot); renderMap(); }));
   if (!mapObj) {
     mapObj = L.map("map", { preferCanvas: true }).setView([33.38, 126.55], 10);
+    let lastZoomedIn = false;
+    mapObj.on("zoomend", () => { const z = mapObj.getZoom() >= 12; if (z !== lastZoomedIn) { lastZoomedIn = z; drawMap(); } });
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "© OpenStreetMap" }).addTo(mapObj);
   }
   setTimeout(() => mapObj.invalidateSize(), 60);
@@ -498,9 +517,16 @@ async function drawMap() {
   const d = mapCache.data;
   Object.values(mapLayers).forEach((l) => mapObj.removeLayer(l));
   mapLayers = {};
-  if (mapOn.includes("areas")) {
-    mapLayers.areas = L.layerGroup(d.areas.map((a) => L.circle([a.lat, a.lng], { radius: 2600, color: LV_COLOR[a.level], fillColor: LV_COLOR[a.level], fillOpacity: .25, weight: 1 })
-      .bindPopup(`<b>${esc(a.name)}</b><br>${esc(a.when)}<br>식당 혼잡: ${LV(a.level)}`))).addTo(mapObj);
+  // 동네 혼잡: 넓은 원 대신 동네 중심에 이름표 (겹치지 않게), 등급별로 켜고 끔
+  const shownAreas = d.areas.filter((a) => mapOn.includes("lv-" + a.level));
+  if (shownAreas.length) {
+    // 멀리서 볼 때 제주시·서귀포시 '동'은 겹치므로 작은 점, 가까이 보면 이름표 (읍·면은 항상 이름표)
+    const zoomedIn = mapObj.getZoom() >= 12;
+    mapLayers.areas = L.layerGroup(shownAreas.map((a) => (zoomedIn || !a.name.endsWith("동") ? L.marker([a.lat, a.lng], {
+      icon: L.divIcon({ className: "", html: `<div class="area-pill" style="background:${LV_COLOR[a.level]}">${esc(a.name.replace(/(읍|면)$/, ""))} ${esc(a.level)}</div>`, iconSize: null }),
+      zIndexOffset: 1000,
+    }) : L.circleMarker([a.lat, a.lng], { radius: 7, color: "#fff", weight: 2, fillColor: LV_COLOR[a.level], fillOpacity: 1 }))
+    .bindPopup(`<b>${esc(a.name)}</b><br>${esc(a.when)}<br>식당 혼잡: ${LV(a.level)}<br><span class="small muted">과거 패턴 예측 · 실시간 아님</span>`))).addTo(mapObj);
   }
   const ico = { "관광지": "🏛", "오름": "⛰", "해수욕장": "🏖", "명소": "📍" };
   for (const k of Object.keys(ico)) {
@@ -540,12 +566,77 @@ async function renderPlan() {
   }));
   try {
     const q = new URLSearchParams({ regions: state.regions.join(","), when: dateFor(state.day), start: planState.start, stops: planState.stops, meals: planState.meals, kinds: planState.kinds.join(",") });
-    const r = await api(`/api/itinerary?${q}`);
-    $("#planOut").innerHTML = itineraryHTML(r) + `<div class="mini-map" id="planMap"></div>
-      <div class="row" style="margin-top:12px"><button class="btn sea" id="planAsk">AI에게 이 일정 다듬기</button></div>`;
-    drawPlanMap(r);
-    $("#planAsk").onclick = () => askAI(`${state.regions.join(", ")}에서 ${dayLabel(state.day)} ${planState.start} 출발 하루 일정 짜 주세요. 식사는 ${planState.meals.replace(",", "과 ")}.`);
+    showPlan(await api(`/api/itinerary?${q}`));
   } catch (e) { $("#planOut").innerHTML = `<div class="error">${esc(e.message)}</div>`; }
+}
+
+/* ---- 일정 직접 고치기 (AI 없이) ---- */
+let planStops = [], planMeta = {};
+const KEEP = ["name", "kind", "lat", "lng", "base_level", "level", "stay_min", "poi_id", "store_id", "meal", "category", "naver", "naver_name"];
+const pick = (p) => Object.fromEntries(KEEP.filter((k) => p[k] !== undefined && p[k] !== null).map((k) => [k, p[k]]));
+function showPlan(r) {
+  planStops = r.itinerary.map(pick);
+  planMeta = r;
+  const n = r.itinerary.length;
+  const rows = r.itinerary.map((p, i) => {
+    const move = i && p.travel_min ? `<div class="move"><span></span><div class="line"></div><span>🚗 ${p.route === "길찾기" ? "" : "약 "}${p.travel_min}분 · ${p.distance_km}km${p.route === "길찾기" ? " · 네이버 길찾기" : " · 추정"}</span></div>` : "";
+    const link = p.kind === "식사" && p.naver !== "등록" && p.naver !== "다른 상호로 등록"
+      ? `<a href="${routeTo(p.name, p.lat, p.lng)}" target="_blank" rel="noopener">길찾기</a>`
+      : `<a href="${naverSearch("제주 " + (p.naver_name || p.name))}" target="_blank" rel="noopener">네이버 지도</a>`;
+    const stay = [30, 60, 90, 120, 180].map((m) => `<option value="${m}" ${m == p.stay_min ? "selected" : ""}>${m}분 머무르기</option>`).join("");
+    return `${move}<div class="tl"><div class="time">${esc(p.arrive)}</div><div class="dot">${p.icon}</div>
+      <div class="body"><div class="row"><span class="t">${esc(p.name)}</span>${LV(p.level)}${p.kind === "식사" && p.naver ? NAVER_BADGE(p.naver) : ""}</div>
+        <div class="row small muted" style="margin-top:4px">
+          <span>${esc(p.kind === "식사" ? (p.category || "식사") : p.kind)}</span>
+          <select data-stay="${i}" aria-label="머무는 시간">${stay}</select>
+          <span class="edit"><button data-up="${i}" ${i ? "" : "disabled"} title="앞으로">↑</button><button data-down="${i}" ${i < n - 1 ? "" : "disabled"} title="뒤로">↓</button><button data-del="${i}" title="빼기">✕</button></span>
+          ${link}
+        </div></div></div>`;
+  }).join("");
+  $("#planOut").innerHTML = `<div class="card">
+      <div class="row" style="margin-bottom:10px"><b>${esc((r.regions || state.regions).join(" · "))}</b>
+        <span class="muted small">${esc(r.ends_at)} 끝 · 이동 합계 ${r.total_travel_min}분</span>
+        <label class="small muted" style="margin-left:auto">출발 <input type="time" id="planStart" value="${esc(r.itinerary[0]?.arrive || planState.start)}"></label></div>
+      ${rows || `<div class="empty">장소를 추가해 주세요</div>`}
+      <div class="row" style="margin-top:12px"><button class="btn ghost" id="planAdd">＋ 장소·식당 추가</button><button class="btn ghost" id="planAuto">자동으로 다시 짜기</button></div>
+      <div id="planCands"></div>
+      <div class="source">${(r.notes || []).filter(Boolean).map(esc).join(" · ")}${r.sources?.length ? `<br>근거: ${esc(r.sources.join(", "))}` : ""}</div></div>
+    <div class="mini-map" id="planMap"></div>
+    <div class="row" style="margin-top:12px"><button class="btn sea" id="planAsk">AI에게 이 일정 설명·다듬기</button></div>`;
+  if (n) drawPlanMap(r);
+  const v = $("#planOut");
+  v.querySelectorAll("[data-up]").forEach((b) => (b.onclick = () => { const i = +b.dataset.up; [planStops[i - 1], planStops[i]] = [planStops[i], planStops[i - 1]]; recalcPlan(); }));
+  v.querySelectorAll("[data-down]").forEach((b) => (b.onclick = () => { const i = +b.dataset.down; [planStops[i + 1], planStops[i]] = [planStops[i], planStops[i + 1]]; recalcPlan(); }));
+  v.querySelectorAll("[data-del]").forEach((b) => (b.onclick = () => { planStops.splice(+b.dataset.del, 1); recalcPlan(); }));
+  v.querySelectorAll("[data-stay]").forEach((sel) => (sel.onchange = () => { planStops[+sel.dataset.stay].stay_min = +sel.value; recalcPlan(); }));
+  $("#planStart").onchange = () => recalcPlan();
+  $("#planAuto").onclick = () => renderPlan();
+  $("#planAdd").onclick = () => showCandidates();
+  $("#planAsk").onclick = () => askAI(`이 일정 어때요? 덜 붐비게 바꿀 점이 있으면 알려 주세요: ${r.itinerary.map((p) => `${p.arrive} ${p.name}`).join(" → ")} (${state.regions.join(", ")}, ${dayLabel(state.day)})`);
+}
+async function recalcPlan() {
+  $("#planOut").style.opacity = .6;
+  try {
+    const res = await fetch("/api/itinerary/schedule", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stops: planStops, start: $("#planStart")?.value || planState.start }) });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || `오류 ${res.status}`);
+    const r = await res.json(); r.regions = planMeta.regions; showPlan(r);
+  } catch (e) { alert(e.message); }
+  finally { $("#planOut").style.opacity = 1; }
+}
+async function showCandidates() {
+  const box = $("#planCands");
+  box.innerHTML = `<div class="skeleton" style="margin-top:12px"></div>`;
+  const c = await api(`/api/itinerary/candidates?regions=${encodeURIComponent(state.regions.join(","))}&when=${dateFor(state.day)}`);
+  const inPlan = new Set(planStops.map((p) => p.name));
+  const ic = { "관광지": "🏛", "오름": "⛰", "해수욕장": "🏖", "명소": "📍", "식사": "🍚" };
+  const item = (p, type, i) => inPlan.has(p.name) ? "" : `<button class="cand" data-type="${type}" data-i="${i}"><span>${ic[p.kind] || "📍"} ${esc(p.name)}</span>${LV(p.level)}</button>`;
+  box.innerHTML = `<div class="cands"><div><b class="small">🍚 추천 식당</b>${c.restaurants.map((p, i) => item(p, "r", i)).join("") || `<div class="small muted">없음</div>`}</div>
+    <div><b class="small">관광 장소 (덜 붐비는 순)</b>${c.pois.map((p, i) => item(p, "p", i)).join("") || `<div class="small muted">없음</div>`}</div></div>`;
+  box.querySelectorAll(".cand").forEach((b) => (b.onclick = () => {
+    const p = (b.dataset.type === "r" ? c.restaurants : c.pois)[+b.dataset.i];
+    planStops.push(pick(p));
+    recalcPlan();
+  }));
 }
 function itineraryHTML(r) {
   const items = r.itinerary.map((p, i) => `${i && p.travel_min ? `<div class="move"><span></span><div class="line"></div><span>🚗 ${p.route === "길찾기" ? "" : "약 "}${p.travel_min}분 · ${p.distance_km}km${p.route === "길찾기" ? " · 네이버 길찾기" : " · 추정"}</span></div>` : ""}

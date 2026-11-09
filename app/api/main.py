@@ -176,6 +176,20 @@ def api_itinerary(regions: str, when: str = "", start: str = "10:00", stops: int
     return _ok(places.plan_itinerary(regions, when, start, stops, kinds, meals, category))
 
 
+@app.get("/api/itinerary/candidates")
+def api_itinerary_candidates(regions: str, when: str = ""):
+    return places.candidates(regions, when)
+
+
+@app.post("/api/itinerary/schedule")
+def api_itinerary_schedule(body: dict):
+    """화면에서 고친 일정(순서·머무는 시간·추가·삭제)의 시간과 이동을 다시 계산 (AI 없음)."""
+    stops = body.get("stops") or []
+    if not isinstance(stops, list) or len(stops) > 12:
+        raise HTTPException(400, "장소는 12곳까지")
+    return places.schedule(stops, str(body.get("start") or "10:00")[:5])
+
+
 @app.get("/api/store/{store_id}")
 def api_store(store_id: int):
     """사장님 내 가게 화면: 가게 정보·네이버 등록·동네 손님·요일×시간 혼잡·리뷰 요약·만든 초안 (AI 없음)."""

@@ -186,7 +186,21 @@ def check_store(store: dict) -> dict:
             if same_addr and (ns >= 45 or _norm_name(it["title"]) in _norm_name(store["name"])):
                 result = {"status": 1, "name_score": ns, "addr_match": True, "item": it}
                 break
-    it = result["item"] or {}
+    # 그래도 없으면 '동네 + 업종'으로 검색해 같은 주소의 가게를 찾는다 (상호 변경·다른 이름 등록: '여우다방' 자리에 '장미다방')
+    if result["status"] == 0 and store.get("category"):
+        kw = CATEGORY_KW.get(store["category"], "식당")
+        road = re.search(r"([가-힣0-9]+(?:로|길))\s*\d", store.get("addr_road") or "")
+        qs = [f"{emd} {kw}".strip()] + ([f"{road.group(1)} {kw}"] if road else [])
+        hits = []
+        for q in qs:
+            queries.append(q)
+            hits += search(q)
+        for it in hits:
+            same_addr = (road_key(store.get("addr_road")) and road_key(store.get("addr_road")) == road_key(it.get("roadAddress"))) or                         (jibun_key(store.get("addr_jibun")) and jibun_key(store.get("addr_jibun")) == jibun_key(it.get("address")))
+            if same_addr:
+                result = {"status": 2, "name_score": name_score(store["name"], it["title"]), "addr_match": True, "item": it}
+                break
+    it = (result["item"] or {}) if result["status"] != 0 else {}
     row = {
         "store_id": store["store_id"],
         "status": result["status"],
@@ -206,6 +220,13 @@ def check_store(store: dict) -> dict:
 
 
 _write_lock = __import__("threading").Lock()
+
+# 인허가 업태 → 네이버 검색어
+CATEGORY_KW = {
+    "다방": "다방", "커피숍": "카페", "까페": "카페", "전통찻집": "찻집", "한식": "식당", "식육(숯불구이)": "고기",
+    "횟집": "횟집", "호프/통닭": "호프", "통닭(치킨)": "치킨", "분식": "분식", "일식": "일식", "중국식": "중식",
+    "경양식": "양식", "패스트푸드": "패스트푸드", "정종/대포집/소주방": "술집", "기타 휴게음식점": "카페",
+}
 
 
 def save(row: dict):

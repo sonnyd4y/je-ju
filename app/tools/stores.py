@@ -52,6 +52,15 @@ def _status_label(r: dict) -> str:
     return "영업 중" if str(r.get("status", "")).startswith("영업") else (r.get("status") or "알 수 없음")
 
 
+def _naver_name(store_id: int) -> str | None:
+    """네이버에 등록된 상호 (인허가 상호와 다를 때 표시용)."""
+    try:
+        n = db.rows("SELECT naver_title, status, addr_match FROM naver_check WHERE store_id=?", [store_id])
+    except Exception:
+        return None
+    return n[0]["naver_title"] if n and (n[0]["status"] == 1 or n[0]["addr_match"]) else None
+
+
 def _public(r: dict) -> dict:
     """도구 응답용 가게 정보 (주소는 도로명 우선)."""
     return {
@@ -66,6 +75,7 @@ def _public(r: dict) -> dict:
         "lat": r["lat"],
         "lng": r["lng"],
         "naver_listed": {1: "등록", 0: "미등록 후보"}.get(r["naver_listed"], "미확인"),
+        "naver_name": _naver_name(r["store_id"]),
     }
 
 

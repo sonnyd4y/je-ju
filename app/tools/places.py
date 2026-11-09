@@ -14,6 +14,8 @@ import pandas as pd
 from app.data import db, regions
 from app.tools import insight, recommend, route
 
+# 식사 자리로는 고르지 않는 업태 (카페·다방 등)
+NOT_MEAL = {"다방", "커피숍", "까페", "전통찻집", "떡카페", "라이브카페", "키즈카페", "아이스크림", "과자점", "감성주점", "호프/통닭", "정종/대포집/소주방"}
 STAY = {"오름": 90, "해수욕장": 90, "관광지": 90, "명소": 60, "식사": 60}
 LEVEL_SCORE = {"한산": 1.0, "보통": 0.6, "붐빔": 0.2}
 KIND_ICON = {"오름": "⛰", "해수욕장": "🏖", "관광지": "🏛", "명소": "📍", "식사": "🍚"}
@@ -130,13 +132,14 @@ def plan_itinerary(regions_text: str, when: str = "", start: str = "10:00", stop
         coords = {r["store_id"]: r for r in db.rows(
             f"SELECT store_id, lat, lng FROM stores WHERE store_id IN ({','.join(str(x['store_id']) for x in rec.get('recommendations', [])) or '0'}) AND lat IS NOT NULL")}
         used = {ms["store_id"] for ms in meal_stops}
-        best = next((x for x in rec.get("recommendations", []) if x["store_id"] in coords and x["store_id"] not in used), None)
+        best = next((x for x in rec.get("recommendations", [])
+                     if x["store_id"] in coords and x["store_id"] not in used and x["category"] not in NOT_MEAL), None)
         if best:
             c = coords[best["store_id"]]
             region_level = next((rg["crowd_level"] for rg in rec["regions"] if rg["region"] == best["region"]), "보통")
             meal_stops.append({"meal": m, "name": best["name"], "kind": "식사", "lat": c["lat"], "lng": c["lng"],
                                "level": region_level, "store_id": best["store_id"], "category": best["category"],
-                               "naver": best["naver"], "score": best["score"]})
+                               "naver": best["naver"], "naver_name": best.get("naver_name"), "score": best["score"]})
 
     # 방문 순서: 첫 동네 중심에서 가장 가까운 곳부터
     cent = db.rows("SELECT lat, lng FROM region_centroids WHERE city=? AND emd=?", [res[0]["city"], res[0]["admin"][0]])
@@ -157,8 +160,9 @@ def plan_itinerary(regions_text: str, when: str = "", start: str = "10:00", stop
             if rt:
                 mv, d, path, how = max(1, rt["minutes"]), rt["km"], rt["path"], "길찾기"
         arrive = at + timedelta(minutes=mv)
+        stop = {**stop, "base_level": stop.get("base_level", stop["level"])}
         if stop["kind"] != "식사":  # 관광 장소는 도착 시간대 패턴 반영
-            stop = {**stop, "level": adjust_level(stop["level"], _slot_of(arrive.strftime("%H:%M")))}
+            stop = {**stop, "level": adjust_level(stop["base_level"], _slot_of(arrive.strftime("%H:%M")))}
         plan.append({**stop, "icon": KIND_ICON[stop["kind"]], "arrive": arrive.strftime("%H:%M"),
                      "stay_min": STAY[stop["kind"]], "travel_min": mv, "distance_km": round(d, 1),
                      "route": how if prev else None, "path": path})
@@ -225,3 +229,58 @@ def map_data(when: str = "", time_slot: str = "점심", kinds: str = "관광지,
     stores = db.rows(sql + " LIMIT ?", [*params, store_limit])
     return {"areas": areas, "pois": pois, "stores": stores,
             "note": "가게 위치: 네이버 검색 좌표 또는 인허가 주소의 네이버 Geocoding 좌표"}
+
+
+# ---------- 사용자가 직접 고친 일정 ----------
+
+def schedule(stops: list[dict], start: str = "10:00") -> dict:
+    """사용자가 고른 순서·머무는 시간 그대로 도착 시간과 이동 시간(네이버 길찾기, 없으면 추정)을 다시 계산한다.
+    stops: [{name, kind, lat, lng, base_level?, stay_min?, ...}] — 순서대로 방문"""
+    if not stops:
+        return {"itinerary": [], "ends_at": start, "total_travel_min": 0, "notes": [], "sources": []}
+    t = datetime.strptime(start, "%H:%M")
+    plan, prev = [], None
+    for s in stops:
+        if s.get("lat") is None or s.get("lng") is None or s.get("kind") not in STAY:
+            continue
+        d, mv, path, how = 0.0, 0, None, None
+        if prev:
+            d = km(prev["lat"], prev["lng"], s["lat"], s["lng"])
+            mv, how = travel_min(d), "추정"
+            rt = route.driving((prev["lat"], prev["lng"]), (s["lat"], s["lng"]))
+            if rt:
+                mv, d, path, how = max(1, rt["minutes"]), rt["km"], rt["path"], "길찾기"
+        arrive = t + timedelta(minutes=mv)
+        base = s.get("base_level") or s.get("level") or "정보 없음"
+        level = adjust_level(base, _slot_of(arrive.strftime("%H:%M"))) if s["kind"] != "식사" else base
+        stay = int(s.get("stay_min") or STAY[s["kind"]])
+        plan.append({**s, "icon": KIND_ICON[s["kind"]], "arrive": arrive.strftime("%H:%M"), "stay_min": stay,
+                     "travel_min": mv, "distance_km": round(d, 1), "route": how, "path": path,
+                     "base_level": base, "level": level})
+        t, prev = arrive + timedelta(minutes=stay), s
+    used_route = any(p.get("route") == "길찾기" for p in plan)
+    return {
+        "itinerary": plan, "ends_at": t.strftime("%H:%M"), "total_travel_min": sum(p["travel_min"] for p in plan),
+        "notes": ["이동 시간은 네이버 길찾기(자동차) 기준" if used_route else "이동 시간은 직선거리 기준 추정",
+                  "사용자가 고친 순서 그대로 계산"],
+        "sources": db.cite("wifi_monthly", "sight_monthly", "district_time"),
+    }
+
+
+def candidates(regions_text: str, when: str = "") -> dict:
+    """일정에 넣을 수 있는 후보: 고른 동네의 관광 장소(그 달 혼잡) + 추천 식당(좌표 있는 곳)."""
+    names = [x.strip() for x in regions_text.split(",") if x.strip()]
+    res = [r for r in (regions.resolve(n) for n in names) if r]
+    admin = [(r["city"], a) for r in res for a in r["admin"]]
+    levels = _poi_levels(_month(when))
+    pois = [dict(p, base_level=levels.get(p["poi_id"], "정보 없음"), level=levels.get(p["poi_id"], "정보 없음"))
+            for p in db.rows("SELECT poi_id, kind, name, lat, lng, city, emd FROM pois") if (p["city"], p["emd"]) in admin]
+    order = {"한산": 0, "보통": 1, "붐빔": 2}
+    pois.sort(key=lambda p: (order.get(p["level"], 1), p["kind"], p["name"]))
+    rec = recommend.recommend_stores(",".join(names), "", when, "점심", limit=10, require_coords=True)
+    rec["recommendations"] = [x for x in rec.get("recommendations", []) if x["category"] not in NOT_MEAL]
+    foods = [{"kind": "식사", "meal": "식사", "name": x["name"], "lat": x["lat"], "lng": x["lng"], "store_id": x["store_id"],
+              "category": x["category"], "naver": x["naver"], "naver_name": x.get("naver_name"), "level": next(
+                  (g["crowd_level"] for g in rec.get("regions", []) if g["region"] == x["region"]), "보통")}
+             for x in rec.get("recommendations", [])]
+    return {"pois": pois, "restaurants": foods}
