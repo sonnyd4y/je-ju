@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 
 from app.data import db, regions
-from app.tools import insight, recommend
+from app.tools import insight, recommend, route
 
 STAY = {"오름": 90, "해수욕장": 90, "관광지": 90, "명소": 60, "식사": 60}
 LEVEL_SCORE = {"한산": 1.0, "보통": 0.6, "붐빔": 0.2}
@@ -124,10 +124,15 @@ def plan_itinerary(regions_text: str, when: str = "", start: str = "10:00", stop
     def add(stop, at):
         nonlocal cur_lat, cur_lng, prev
         d = km(cur_lat, cur_lng, stop["lat"], stop["lng"]) if prev else 0
-        mv = travel_min(d) if prev else 0
+        mv, path, how = (travel_min(d) if prev else 0), None, "추정"
+        if prev:  # 네이버 길찾기가 되면 실제 도로 시간·거리·경로 사용
+            rt = route.driving((cur_lat, cur_lng), (stop["lat"], stop["lng"]))
+            if rt:
+                mv, d, path, how = max(1, rt["minutes"]), rt["km"], rt["path"], "길찾기"
         arrive = at + timedelta(minutes=mv)
         plan.append({**stop, "icon": KIND_ICON[stop["kind"]], "arrive": arrive.strftime("%H:%M"),
-                     "stay_min": STAY[stop["kind"]], "travel_min": mv, "distance_km": round(d, 1)})
+                     "stay_min": STAY[stop["kind"]], "travel_min": mv, "distance_km": round(d, 1),
+                     "route": how if prev else None, "path": path})
         cur_lat, cur_lng, prev = stop["lat"], stop["lng"], stop
         return arrive + timedelta(minutes=STAY[stop["kind"]])
 
@@ -151,7 +156,8 @@ def plan_itinerary(regions_text: str, when: str = "", start: str = "10:00", stop
         "ends_at": t.strftime("%H:%M"),
         "total_travel_min": sum(p["travel_min"] for p in plan),
         "notes": [
-            "이동 시간은 직선거리×1.3, 시속 35km 기준 추정 (실제 도로 경로 아님)",
+            "이동 시간은 네이버 길찾기(자동차) 기준" if any(p.get("route") == "길찾기" for p in plan)
+            else "이동 시간은 직선거리×1.3, 시속 35km 기준 추정 (실제 도로 경로 아님)",
             "장소 혼잡은 월 단위 과거 패턴(와이파이·관광지 유입), 식당은 동네 혼잡 예측 + 추천 모델",
             "점심 시간대가 붐비면 11:30으로 당김" if lunch and lunch["level"] == "붐빔" else "",
         ],

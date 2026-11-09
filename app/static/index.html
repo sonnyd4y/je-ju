@@ -526,7 +526,7 @@ async function renderPlan() {
   } catch (e) { $("#planOut").innerHTML = `<div class="error">${esc(e.message)}</div>`; }
 }
 function itineraryHTML(r) {
-  const items = r.itinerary.map((p, i) => `${i && p.travel_min ? `<div class="move"><span></span><div class="line"></div><span>🚗 약 ${p.travel_min}분 · ${p.distance_km}km</span></div>` : ""}
+  const items = r.itinerary.map((p, i) => `${i && p.travel_min ? `<div class="move"><span></span><div class="line"></div><span>🚗 ${p.route === "길찾기" ? "" : "약 "}${p.travel_min}분 · ${p.distance_km}km${p.route === "길찾기" ? " · 네이버 길찾기" : " · 추정"}</span></div>` : ""}
     <div class="tl"><div class="time">${esc(p.arrive)}</div><div class="dot">${p.icon}</div>
       <div class="body"><div class="row"><span class="t">${esc(p.name)}</span>${LV(p.level)}${p.naver ? NAVER_BADGE(p.naver) : ""}</div>
       <div class="small muted">${esc(p.kind === "식사" ? `${p.meal} · ${p.category || ""}` : p.kind)} · ${p.stay_min}분 머무르기 ·
@@ -542,7 +542,12 @@ function drawPlanMap(r) {
   const pts = r.itinerary.map((p) => [p.lat, p.lng]);
   r.itinerary.forEach((p, i) => L.marker([p.lat, p.lng], { icon: L.divIcon({ className: "", html: `<div class="poi-icon">${p.icon}</div>`, iconSize: [30, 30], iconAnchor: [15, 15] }) })
     .bindTooltip(`${i + 1}. ${p.name} (${p.arrive})`).addTo(planMap));
-  L.polyline(pts, { color: "#0f5c6e", weight: 3, dashArray: "6 6" }).addTo(planMap);
+  // 실제 도로 경로가 있으면 실선, 없으면 점선(직선 추정)
+  r.itinerary.forEach((p, i) => {
+    if (!i) return;
+    const seg = p.path?.length ? p.path : [[r.itinerary[i - 1].lat, r.itinerary[i - 1].lng], [p.lat, p.lng]];
+    L.polyline(seg, p.path?.length ? { color: "#0f5c6e", weight: 4 } : { color: "#0f5c6e", weight: 3, dashArray: "6 6" }).addTo(planMap);
+  });
   planMap.fitBounds(L.latLngBounds(pts).pad(0.25));
 }
 
