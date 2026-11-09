@@ -328,6 +328,21 @@ const LV_COLOR = { "한산": "#2f8f5b", "보통": "#c98a12", "붐빔": "#d2453f"
 const NAVER_BADGE = (n) => n === "미등록 후보" ? `<span class="badge b-hidden">숨은 가게 · 네이버 미등록</span>`
   : n === "등록" ? `<span class="badge b-listed">네이버 등록</span>` : `<span class="badge b-unknown">네이버 미확인</span>`;
 const naverSearch = (q) => `https://map.naver.com/p/search/${encodeURIComponent(q)}`;
+// 네이버에 없는 가게는 좌표로 길찾기 (카카오맵 URL은 이름·좌표만으로 열린다)
+const routeTo = (name, lat, lng) => `https://map.kakao.com/link/to/${encodeURIComponent(name)},${lat},${lng}`;
+function placeLinks(name, region, lat, lng, naver) {
+  if (naver === "등록" || lat == null) return `<a href="${naverSearch(name + " " + (region || ""))}" target="_blank" rel="noopener">네이버 지도에서 보기</a>`;
+  return `<button data-loc="${lat},${lng}" data-name="${esc(name)}">위치 보기</button>
+    <a href="${routeTo(name, lat, lng)}" target="_blank" rel="noopener">길찾기</a>`;
+}
+function bindLoc(root) {
+  root.querySelectorAll("[data-loc]").forEach((b) => (b.onclick = () => {
+    const [lat, lng] = b.dataset.loc.split(",").map(Number);
+    focusOn = { lat, lng, name: b.dataset.name };
+    go("map");
+  }));
+}
+let focusOn = null;
 const ICONS = {
   home: '<path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
   map: '<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/>',
@@ -419,11 +434,11 @@ function storeCard(s, opts = {}) {
     <div class="row">${NAVER_BADGE(s.naver)}</div>
     ${w.length ? `<div class="parts" title="${esc(Object.entries(s.score_parts).map(([k, v]) => `${k} ${v}`).join(" · "))}">${w.map((v) => `<i style="width:${(v / tot) * 100}%"></i>`).join("")}</div>` : ""}
     <div class="meta">${esc(s.address || "")}</div>
-    <div class="acts"><a href="${naverSearch(s.name + " " + (s.region || ""))}" target="_blank" rel="noopener">네이버 지도에서 보기</a>
+    <div class="acts">${placeLinks(s.name, s.region, s.lat, s.lng, s.naver)}
       ${opts.ask !== false ? `<button data-ask="${esc(s.name)} (${esc(s.region || "")}) 어떤 곳이에요? 언제 가면 덜 붐벼요?">AI에게 물어보기</button>` : ""}</div>
   </div>`;
 }
-function bindAsk(root) { root.querySelectorAll("[data-ask]").forEach((b) => (b.onclick = () => askAI(b.dataset.ask))); }
+function bindAsk(root) { root.querySelectorAll("[data-ask]").forEach((b) => (b.onclick = () => askAI(b.dataset.ask))); bindLoc(root); }
 const PARTS_LEGEND = `<div class="legend"><span><i style="background:var(--quiet)"></i>덜 붐빔</span><span><i style="background:var(--sea)"></i>생활권 여유</span><span><i style="background:var(--accent)"></i>숨은 가게</span><span><i style="background:#8b6f47"></i>오래된 가게</span></div>`;
 
 /* ================= 여행객 홈 ================= */
@@ -470,7 +485,12 @@ function renderMap() {
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "© OpenStreetMap" }).addTo(mapObj);
   }
   setTimeout(() => mapObj.invalidateSize(), 60);
-  drawMap();
+  drawMap().then(() => {
+    if (!focusOn) return;
+    const f = focusOn; focusOn = null;
+    mapObj.setView([f.lat, f.lng], 16);
+    L.popup().setLatLng([f.lat, f.lng]).setContent(`<b>${esc(f.name)}</b><br><a href="${routeTo(f.name, f.lat, f.lng)}" target="_blank" rel="noopener">여기로 길찾기</a>`).openOn(mapObj);
+  });
 }
 async function drawMap() {
   const key = `${dateFor(state.day)}|${state.slot}|${state.regions.join(",")}`;
@@ -492,7 +512,7 @@ async function drawMap() {
   if (mapOn.includes("stores")) {
     const sc = (n) => n === 0 ? "#d9580b" : n === 1 ? "#0f5c6e" : "#9a948a";
     mapLayers.stores = L.layerGroup(d.stores.map((s) => L.circleMarker([s.lat, s.lng], { radius: s.naver_listed === 0 ? 6 : 4, color: "#fff", weight: 1, fillColor: sc(s.naver_listed), fillOpacity: .9 })
-      .bindPopup(`<b>${esc(s.name)}</b><br>${esc(s.category || "")} · ${esc(s.emd || "")}<br>${s.naver_listed === 0 ? '<span class="badge b-hidden">숨은 가게 · 네이버 미등록</span>' : s.naver_listed === 1 ? '<span class="badge b-listed">네이버 등록</span>' : '<span class="badge b-unknown">네이버 미확인</span>'}<br><a href="${naverSearch(s.name + " " + (s.emd || ""))}" target="_blank" rel="noopener">네이버 지도</a>`))).addTo(mapObj);
+      .bindPopup(`<b>${esc(s.name)}</b><br>${esc(s.category || "")} · ${esc(s.emd || "")}<br>${s.naver_listed === 0 ? '<span class="badge b-hidden">숨은 가게 · 네이버 미등록</span>' : s.naver_listed === 1 ? '<span class="badge b-listed">네이버 등록</span>' : '<span class="badge b-unknown">네이버 미확인</span>'}<br>${s.naver_listed === 1 ? `<a href="${naverSearch(s.name + " " + (s.emd || ""))}" target="_blank" rel="noopener">네이버 지도</a>` : `<a href="${routeTo(s.name, s.lat, s.lng)}" target="_blank" rel="noopener">길찾기</a>`}`))).addTo(mapObj);
   }
 }
 
@@ -532,7 +552,7 @@ function itineraryHTML(r) {
     <div class="tl"><div class="time">${esc(p.arrive)}</div><div class="dot">${p.icon}</div>
       <div class="body"><div class="row"><span class="t">${esc(p.name)}</span>${LV(p.level)}${p.naver ? NAVER_BADGE(p.naver) : ""}</div>
       <div class="small muted">${esc(p.kind === "식사" ? `${p.meal} · ${p.category || ""}` : p.kind)} · ${p.stay_min}분 머무르기 ·
-        <a href="${naverSearch("제주 " + p.name)}" target="_blank" rel="noopener">네이버 지도</a></div></div></div>`).join("");
+        ${p.kind === "식사" && p.naver !== "등록" ? `<a href="${routeTo(p.name, p.lat, p.lng)}" target="_blank" rel="noopener">길찾기</a>` : `<a href="${naverSearch("제주 " + p.name)}" target="_blank" rel="noopener">네이버 지도</a>`}</div></div></div>`).join("");
   return `<div class="card"><div class="row" style="margin-bottom:10px"><b>${esc(r.regions.join(" · "))}</b><span class="muted small">${esc(r.date || "")} · ${esc(r.ends_at)} 끝 · 이동 합계 ${r.total_travel_min}분</span></div>
     <div>${items}</div>
     <div class="source">${r.notes.filter(Boolean).map(esc).join(" · ")}<br>근거: ${esc(r.sources.join(", "))}</div></div>`;
@@ -788,7 +808,7 @@ async function send(text) {
         } else if (ev.type === "tool_result") {
           const li = turn.steps.querySelector(`li[data-id="${ev.id}"]`); if (li) li.className = ev.is_error ? "err" : "done";
           if (ev.name === "render_card" && !ev.is_error && ev.result.image) addCard(turn, ev.result);
-          else if (!ev.is_error) { const w = widgetFor(ev.name, ev.result); if (w) { turn.el.insertAdjacentHTML("beforeend", w); turn.bubble = null; scrollDown(); } }
+          else if (!ev.is_error) { const w = widgetFor(ev.name, ev.result); if (w) { turn.el.insertAdjacentHTML("beforeend", w); bindLoc(turn.el); turn.bubble = null; scrollDown(); } }
         } else if (ev.type === "error") showError(turn, ev.message);
       }
     }

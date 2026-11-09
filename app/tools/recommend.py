@@ -76,6 +76,7 @@ def recommend_stores(regions_text: str, category: str = "", when: str = "", time
                 "address": (s["addr_road"] or s["addr_jibun"] or "").replace("제주특별자치도 ", "").split(",")[0],
                 "years_open": round(years, 1),
                 "naver": {1: "등록", 0: "미등록 후보"}.get(s["naver_listed"], "미확인"),
+                "lat": s["lat"], "lng": s["lng"],
                 "score": round(total, 3),
                 "score_parts": {CRITERIA[k]: round(w[k] * v, 3) for k, v in sc.items()},
             })

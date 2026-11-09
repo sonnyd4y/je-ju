@@ -161,7 +161,7 @@ def base_name(name: str) -> str:
 
 
 def check_store(store: dict) -> dict:
-    """가게 1곳을 네이버에서 찾아 판별하고 저장한다. 등록으로 판별되면 바로 멈춘다 (최대 3회 검색)."""
+    """가게 1곳을 네이버에서 찾아 판별하고 저장한다. 등록으로 판별되면 바로 멈춘다 (상호로 최대 3회 + 상호 앞부분 1회)."""
     emd = store.get("emd") or ""
     short = base_name(store["name"])
     candidates = [f"{store['name']} {emd}".strip(), f"제주 {store['name']}"]
@@ -175,6 +175,17 @@ def check_store(store: dict) -> dict:
             result = r
         if result["status"] == 1:
             break
+    # 인허가 상호가 길어 못 찾았으면 앞부분만으로 검색 ('온정메밀앤돈카츠' → '온정메밀'). 주소가 같아야 등록으로 인정
+    core = re.sub(r"[^가-힣A-Za-z0-9]", "", base_name(store["name"]))
+    if result["status"] != 1 and len(core) >= 5:
+        q = f"{core[:4]} {emd}".strip()
+        queries.append(q)
+        for it in search(q):
+            same_addr = (road_key(store.get("addr_road")) and road_key(store.get("addr_road")) == road_key(it.get("roadAddress"))) or                         (jibun_key(store.get("addr_jibun")) and jibun_key(store.get("addr_jibun")) == jibun_key(it.get("address")))
+            ns = name_score(store["name"], it["title"])
+            if same_addr and (ns >= 45 or _norm_name(it["title"]) in _norm_name(store["name"])):
+                result = {"status": 1, "name_score": ns, "addr_match": True, "item": it}
+                break
     it = result["item"] or {}
     row = {
         "store_id": store["store_id"],

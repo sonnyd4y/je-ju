@@ -29,6 +29,7 @@ def main():
     ap.add_argument("region")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--recheck", action="store_true")
+    ap.add_argument("--only-unlisted", action="store_true", help="미등록 후보·확인 필요로 나온 가게만 다시 확인")
     a = ap.parse_args()
 
     r = regions.resolve(a.region)
@@ -38,6 +39,8 @@ def main():
         con.execute(naver.DDL)
     ph = ",".join("?" * len(r["legal"]))
     skip = "" if a.recheck else "AND store_id NOT IN (SELECT store_id FROM naver_check)"
+    if a.only_unlisted:
+        skip = "AND store_id IN (SELECT store_id FROM naver_check WHERE status IN (0, 2))"
     stores = db.rows(
         f"SELECT store_id, name, emd, addr_road, addr_jibun FROM stores WHERE status LIKE '영업%' "
         f"AND city=? AND emd IN ({ph}) AND coalesce(category,'') NOT IN ({','.join('?' * len(NON_RESTAURANT))}) {skip} "
