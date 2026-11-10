@@ -434,3 +434,24 @@ def test_review_text_paste():
 def test_review_text_tool_registered():
     from app.agent import tools
     assert "analyze_review_text" in {t["name"] for t in tools.TOOL_SPECS}
+
+
+def test_link_naver_name_requires_same_address(monkeypatch, tmp_path):
+    import shutil
+    from app.data import db
+    from app.tools import naver
+    copy = tmp_path / "t.db"
+    shutil.copy(db.DB_PATH, copy)
+    monkeypatch.setattr(db, "DB_PATH", copy)
+    s = db.rows("SELECT store_id, addr_road FROM stores WHERE addr_road LIKE '%로 %' AND status LIKE '영업%' LIMIT 1")[0]
+    same = {"title": "새간판식당", "roadAddress": s["addr_road"], "address": "", "mapx": "1263000000", "mapy": "334000000"}
+    other = {"title": "새간판식당", "roadAddress": "제주특별자치도 제주시 없는로 999", "address": ""}
+    monkeypatch.setattr(naver, "search", lambda q, display=5: [other])
+    r = naver.link_naver_name(s["store_id"], "새간판식당")
+    assert r["linked"] is False and r["naver_candidates"]
+    monkeypatch.setattr(naver, "search", lambda q, display=5: [other, same])
+    r = naver.link_naver_name(s["store_id"], "새간판식당")
+    assert r["linked"] is True
+    c = naver.check_naver_listed(s["store_id"])
+    assert c["naver_status"] == "다른 상호로 등록" and c["owner_confirmed"]
+    assert naver.link_naver_name(s["store_id"], "", confirm=False)["naver_status"] == "미등록 후보"

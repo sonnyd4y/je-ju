@@ -25,14 +25,14 @@
         │
         ├─ 조회·분석     find_store · search_stores · area_insight · resident_balance · place_crowd
         ├─ 의사결정 모델  predict_crowd (수요 예측) · recommend_stores (다기준 추천) · plan_itinerary (일정·길찾기)
-        ├─ 네이버       check_naver_listed (등록 여부) · make_listing_kit (등록 자료)
+        ├─ 네이버       check_naver_listed (등록 여부) · link_naver_name (간판·네이버 상호가 다를 때 주소로 연결) · make_listing_kit (등록 자료)
         ├─ 리뷰         analyze_reviews (구글 리뷰 903) · analyze_review_text (사장님이 붙여넣은 리뷰)
         ├─ 마케팅       marketing_brief (진단·타깃·시점·메시지, 근거 번호)
         ├─ 초안·승인     save_draft → decide_draft (사람 승인) · list_drafts (이력)
         └─ 이미지       render_card (메뉴판·피드·스토리 PNG) · generate_background (생성형 배경)
 ```
 
-도구는 18개이며 정의와 입력 검증은 [app/agent/tools.py](app/agent/tools.py)에 있습니다.
+도구는 19개이며 정의와 입력 검증은 [app/agent/tools.py](app/agent/tools.py)에 있습니다.
 
 ### 자율 범위
 
@@ -135,8 +135,8 @@ python scripts/deploy_firebase.py                              # 화면 (Firebas
 ### 검증
 
 ```bash
-python -m pytest -q                       # 단위 테스트 56개 (API 키 불필요)
-python scripts/eval_agent.py              # Agent 시나리오 평가 15개 (API 비용 약 $0.5) → docs/eval_results.json
+python -m pytest -q                       # 단위 테스트 57개 (API 키 불필요)
+python scripts/eval_agent.py              # Agent 시나리오 평가 16개 (API 비용 약 $0.5) → docs/eval_results.json
 python scripts/eval_agent.py --model claude-haiku-5-5   # 한 모델로 비교
 ```
 
@@ -163,7 +163,7 @@ python scripts/eval_agent.py --model claude-haiku-5-5   # 한 모델로 비교
 - 구글 리뷰(903)는 2021년 자료이고 일부 가게만 있습니다. 리뷰가 없는 가게는 사장님이 붙여넣은 리뷰나 사장님 말씀을 근거로 씁니다.
 - 시간대 패턴(490)은 코로나 이전 2019년 자료에 최근 카드 데이터(502)로 보정합니다 (결정 D-01).
 - 공휴일은 학습 표본이 적어 일요일 패턴으로 대신 예측합니다.
-- 네이버 지역 검색은 결과를 최대 5개만 주므로, 상호가 바뀐 가게는 '다른 상호로 등록'으로 따로 표시합니다.
+- 사업자(인허가) 상호와 간판·네이버 상호가 다른 가게가 많습니다. 상호 앞부분·동네+업종·**도로명 주소**로도 검색해 같은 주소의 가게를 찾고, 사장님께 "이 가게가 맞나요?"를 확인받아 연결합니다. 이름이 완전히 달라도 사장님이 네이버 상호를 알려 주면 **주소가 같을 때만** 연결합니다 (남의 가게에 잘못 연결되지 않게). AI는 등록 자료를 만들기 전에 다른 이름으로 이미 등록됐는지 먼저 묻습니다.
 - 인터넷이 끊기면 AI 대화·길찾기·네이버 확인이 멈춥니다. 홈·지도·일정 계산(직선거리 추정)은 로컬 DB로 동작합니다.
 
 | 화면에 보이는 오류 | 원인·조치 |

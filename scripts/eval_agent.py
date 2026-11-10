@@ -74,9 +74,20 @@ SCENARIOS = [
     {
         "name": "사장님_네이버등록자료",
         "mode": "owner",
-        "turns": ["애월 콩지쿡 사장인데 네이버 지도에 우리 가게 올리고 싶어요"],
+        # 등록 자료를 만들기 전에 '다른 이름으로 이미 올라가 있는지' 먼저 묻고, 없다고 하면 만든다
+        "turns": ["애월 콩지쿡 사장인데 네이버 지도에 우리 가게 올리고 싶어요",
+                  "아니요, 다른 이름으로도 안 올라가 있어요. 처음 올리는 거예요"],
         "must_call": ["find_store", "make_listing_kit"],
         "must_not_call": ["decide_draft"],
+    },
+    {
+        "name": "사장님_네이버_다른상호",
+        # 인허가 '옹포분식' ↔ 네이버 '옹포김밥' (같은 주소). 간판을 바꾼 가게를 미등록으로 오해하지 않아야 함
+        "mode": "owner",
+        "turns": ["한림 옹포분식 사장이에요. 네이버 지도에는 옹포김밥이라는 이름으로 올라가 있어요. 우리 가게 네이버 상태 확인해 주세요"],
+        "must_call": ["find_store", "link_naver_name"],
+        "must_not_call": ["make_listing_kit", "decide_draft"],
+        "must_say": ["옹포김밥"],
     },
     {
         "name": "사장님_리뷰붙여넣기",

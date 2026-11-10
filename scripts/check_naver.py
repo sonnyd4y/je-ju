@@ -38,11 +38,12 @@ def main():
     with db.connect() as con:
         con.execute(naver.DDL)
     ph = ",".join("?" * len(r["legal"]))
-    skip = "" if a.recheck else "AND store_id NOT IN (SELECT store_id FROM naver_check)"
+    skip = ("AND store_id NOT IN (SELECT store_id FROM naver_check WHERE queries LIKE '사장님%')" if a.recheck
+            else "AND store_id NOT IN (SELECT store_id FROM naver_check)")
     if a.only_unlisted:
-        skip = "AND store_id IN (SELECT store_id FROM naver_check WHERE status IN (0, 2))"
+        skip = "AND store_id IN (SELECT store_id FROM naver_check WHERE status IN (0, 2) AND coalesce(queries,'') NOT LIKE '사장님%')"
     stores = db.rows(
-        f"SELECT store_id, name, emd, addr_road, addr_jibun FROM stores WHERE status LIKE '영업%' "
+        f"SELECT store_id, name, emd, addr_road, addr_jibun, category FROM stores WHERE status LIKE '영업%' "
         f"AND city=? AND emd IN ({ph}) AND coalesce(category,'') NOT IN ({','.join('?' * len(NON_RESTAURANT))}) {skip} "
         "ORDER BY open_date DESC",
         [r["city"], *r["legal"], *NON_RESTAURANT],

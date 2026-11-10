@@ -172,6 +172,15 @@ def api_recommend(regions: str, category: str = "", when: str = "", time_slot: s
     return _ok(recommend.recommend_stores(regions, category, when, time_slot, priority, limit))
 
 
+@app.post("/api/naver/link")
+def api_naver_link(body: dict):
+    try:
+        sid = int(body.get("store_id"))
+    except (TypeError, ValueError):
+        raise HTTPException(400, "store_id(숫자)가 필요합니다.")
+    return _ok(naver.link_naver_name(sid, str(body.get("naver_name") or "")[:60], bool(body.get("confirm", True))))
+
+
 @app.get("/api/naver")
 def api_naver(store_id: int):
     return _ok(naver.check_naver_listed(store_id))

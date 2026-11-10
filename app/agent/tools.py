@@ -121,7 +121,7 @@ TOOLS = [
     _tool(
         "make_listing_kit",
         "네이버 지도(스마트플레이스) 등록 자료 묶음: 인허가로 채운 기본 정보, 사장님이 준비할 것, 등록 순서. "
-        "미등록 후보 가게 사장님께 등록을 도와드릴 때 사용하고, 소개글은 save_draft(kind=intro)로 초안을 만든다.",
+        "미등록 후보 가게 사장님께 등록을 도와드릴 때 사용하고 (먼저 다른 이름으로 이미 등록됐는지 여쭤본 뒤), 소개글은 save_draft(kind=intro)로 초안을 만든다.",
         {"store_id": {"type": "integer"}},
         ["store_id"],
         listing.make_listing_kit,
@@ -133,6 +133,16 @@ TOOLS = [
         {"store_id": {"type": "integer", "description": "find_store / search_stores 결과의 store_id"}},
         ["store_id"],
         naver.check_naver_listed,
+    ),
+    _tool(
+        "link_naver_name",
+        "사장님이 '네이버엔 다른 이름으로 올라가 있다'고 하면, 그 네이버 상호로 검색해 주소가 같을 때만 우리 가게와 연결한다 "
+        "(인허가 상호와 간판·네이버 상호가 다른 경우). 같은 주소 후보를 사장님이 '우리 가게 아니다'라고 하면 confirm=false.",
+        {"store_id": {"type": "integer"},
+         "naver_name": {"type": "string", "description": "네이버 지도에 올라간 가게 이름 (사장님 말씀)"},
+         "confirm": {"type": "boolean", "description": "false = 같은 주소 후보가 우리 가게가 아님"}},
+        ["store_id", "naver_name"],
+        naver.link_naver_name,
     ),
     _tool(
         "analyze_reviews",

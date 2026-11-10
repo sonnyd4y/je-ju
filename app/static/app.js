@@ -565,16 +565,14 @@ async function renderStore() {
     <div class="card"><div class="store-head"><div class="av">${ic("store")}</div>
       <div style="min-width:0;flex:1"><h1 style="margin:0;font-size:1.4em">${who}</h1>
         <div class="small muted">${esc(s.category || "")} · ${esc(s.city)} ${esc(s.emd)} · <span title="인허가일 기준 · 주인이 바뀌어도 이어질 수 있어요">인허가 ${years}년</span> · ${esc((s.addr_road || s.addr_jibun || "").replace("제주특별자치도 ", "").split(",")[0])}</div>
-        <div class="row" style="margin-top:6px">${st === "등록" ? NAVER_BADGE("등록") : st === "미등록 후보" ? `<span class="badge b-hidden">네이버 지도에 없음</span>` : NAVER_BADGE(st)}${nv.naver_match?.title && nv.naver_match.title !== s.name ? `<span class="small muted">네이버: ${esc(nv.naver_match.title)}</span>` : ""}</div></div>
+        <div class="row" style="margin-top:6px">${st === "등록" ? NAVER_BADGE("등록") : st === "다른 상호로 등록" && nv.owner_confirmed ? NAVER_BADGE("다른 상호로 등록") : st === "미등록 후보" ? `<span class="badge b-hidden">네이버 지도에 없음</span>` : st === "다른 상호로 등록" ? `<span class="badge b-warn">네이버 확인 필요</span>` : NAVER_BADGE(st)}${nv.naver_match?.title && nv.naver_match.title !== s.name && (st === "등록" || nv.owner_confirmed) ? `<span class="small muted">네이버: ${esc(nv.naver_match.title)}</span>` : ""}</div></div>
       <button class="btn ghost sm" id="changeStore">가게 바꾸기</button></div></div>
     <div class="kpis" style="margin-top:12px">
       <div class="kpi"><span class="l">${ic("calendar")}손님 많은 요일</span><span class="v">${esc(ins.busiest_day || "-")}</span></div>
       <div class="kpi"><span class="l">${ic("users")}많이 오는 방문객</span><span class="v">${esc((ins.top_visitor_groups || [])[0] || "-")}</span></div>
       <div class="kpi"><span class="l">${ic("clock")}가장 바쁜 시간</span><span class="v">${esc((slots.sort((a, b) => parseInt(b[1]) - parseInt(a[1]))[0] || ["-"])[0])}</span></div>
       <div class="kpi"><span class="l">${ic("store")}동네 영업 식당</span><span class="v">${esc((ins.stores?.open ?? "-").toLocaleString())}곳</span></div></div>
-    ${st !== "등록" ? `<div class="card" style="margin-top:12px;border-color:var(--accent);background:var(--accent-50)"><div class="row"><span class="kdot" style="background:var(--accent)">${ic("alert")}</span>
-      <div style="flex:1;min-width:0"><b>네이버 지도에서 이 이름으로 찾을 수 없어요</b><div class="small muted">등록하면 여행객이 검색으로 찾아올 수 있어요</div></div>
-      <button class="btn primary sm" data-ask="${who} 네이버 지도 등록 자료 정리해 주세요">등록 자료 받기</button></div></div>` : ""}
+    ${naverCardHTML(st, nv, who)}
     <h2 class="sec">바로 하기</h2>
     <div class="grid c3">
       <button class="tile" data-ask="${who} 사장이에요. 이번 주말에 인스타그램에 올릴 홍보 이미지 만들어 주세요"><span class="ic accent">${ic("megaphone")}</span><b>홍보 이미지</b><span class="d">손님층·리뷰 근거로 문구와 제주 배경까지</span></button>
@@ -602,6 +600,7 @@ async function renderStore() {
     ${d.drafts.length ? `<h2 class="sec">${ic("image")} 만든 것 <span class="hint">초안·확정 이력</span></h2><div class="grid c2">${d.drafts.slice(0, 6).map((x) => `<div class="card flat small"><div class="row"><b>${esc(x.kind_label)}</b><span class="badge ${x.status === "approved" ? "b-ok" : "b-warn"}">${x.status === "approved" ? "확정" : x.status === "pending" ? "미리보기" : esc(x.status)}</span></div><div class="muted">${esc((x.title || x.body || "").slice(0, 70))}</div></div>`).join("")}</div>` : ""}
     <div class="source">${esc([...(ins.sources || []), ...(nv.sources || [])].filter((x, i, a) => a.indexOf(x) === i).join(", "))}</div>`;
   $("#changeStore").onclick = () => { store.set("myStore", null); renderStore(); };
+  bindNaverCard(v, sid);
   $("#rvGo").onclick = async () => {
     const text = $("#rvText").value.trim(); if (!text) return toast("리뷰를 붙여넣어 주세요");
     $("#rvOut").innerHTML = `<div class="skeleton" style="margin-top:12px"></div>`;
@@ -617,6 +616,41 @@ async function renderStore() {
   bindCards(v);
   v.querySelectorAll("[data-photo]").forEach((b) => (b.onclick = () => { pendingPhotoText = `${b.dataset.photo} 메뉴판이에요. 보기 좋게 다시 만들어 주세요`; $("#file").click(); }));
   v.querySelectorAll("[data-today]").forEach((b) => (b.onclick = () => { go("chat"); $("#input").value = `${b.dataset.today} 오늘의 메뉴 이미지 만들어 주세요. 메뉴는 `; $("#input").focus(); autoGrow(); }));
+}
+
+/* 네이버 등록 상태: 인허가 상호와 네이버 상호가 다른 가게 (간판을 바꾼 경우 등) */
+function naverCardHTML(st, nv, who) {
+  if (st === "등록" || (st === "다른 상호로 등록" && nv.owner_confirmed)) return "";
+  const box = (body, acts) => `<div class="card naver-card"><div class="row"><span class="kdot" style="background:var(--accent)">${ic("alert")}</span>
+    <div style="flex:1;min-width:0">${body}</div></div><div class="row" style="margin-top:12px">${acts}</div></div>`;
+  if (st === "다른 상호로 등록") {
+    return box(`<b>같은 주소에 네이버 '${esc(nv.naver_match.title)}'이 있어요</b><div class="small muted">${esc(nv.naver_match.road_address || "")} · 사장님 가게가 맞나요? 맞으면 앞으로 네이버 이름으로 안내·홍보해요</div>`,
+      `<button class="btn sea sm" data-nv-yes="${esc(nv.naver_match.title)}">${ic("check")}네, 우리 가게예요</button><button class="btn ghost sm" data-nv-no>아니에요</button>`);
+  }
+  return box(`<b>네이버 지도에서 이 이름으로 찾을 수 없어요</b><div class="small muted">간판·네이버 이름이 사업자 등록 이름과 다르면 알려 주세요. 주소로 확인해 연결해요</div>`,
+    `<button class="btn sea sm" data-nv-other>${ic("search")}다른 이름으로 이미 등록돼 있어요</button>
+     <button class="btn ghost sm" data-ask="${who} 네이버 지도에 아직 없어요. 등록 자료 정리해 주세요">등록 자료 받기</button>`);
+}
+function bindNaverCard(root, sid) {
+  const link = async (name, confirm = true) => {
+    const btns = root.querySelectorAll(".naver-card button");
+    btns.forEach((b) => (b.disabled = true));
+    const first = btns[0], label = first?.innerHTML;
+    if (first) first.innerHTML = `${ic("refresh")}네이버에서 확인 중…`;
+    try {
+      const r = await postJSON("/api/naver/link", { store_id: sid, naver_name: name, confirm });
+      if (r.linked || !confirm) { toast(r.message); return renderStore(); }
+      const c = (r.naver_candidates || []).map((x) => `${x.title} (${(x.road_address || "").replace("제주특별자치도 ", "")})`).join(", ");
+      await dialog({ title: "주소가 달라서 연결하지 않았어요", body: `우리 가게 주소: ${r.our_address}. ${c ? "네이버에서 찾은 가게: " + c : "그 이름으로 찾은 가게가 없어요."} 이름을 다시 확인해 주세요.`, cancel: null, ok: "확인" });
+    } catch (e) { toast(e.message); }
+    btns.forEach((b) => (b.disabled = false)); if (first) first.innerHTML = label;
+  };
+  root.querySelector("[data-nv-yes]")?.addEventListener("click", (e) => link(e.currentTarget.dataset.nvYes));
+  root.querySelector("[data-nv-no]")?.addEventListener("click", () => link("", false));
+  root.querySelector("[data-nv-other]")?.addEventListener("click", async () => {
+    const name = await dialog({ title: "네이버 지도에 올라간 가게 이름", body: "네이버 지도에서 보이는 이름을 적어 주세요. 주소가 같을 때만 연결해요.", input: "", ok: "확인하기" });
+    if (name) link(name);
+  });
 }
 
 function newNearbyHTML(n, s) {

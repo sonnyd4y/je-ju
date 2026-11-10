@@ -190,7 +190,9 @@ def check_store(store: dict) -> dict:
     if result["status"] == 0 and store.get("category"):
         kw = CATEGORY_KW.get(store["category"], "식당")
         road = re.search(r"([가-힣0-9]+(?:로|길))\s*\d", store.get("addr_road") or "")
-        qs = [f"{emd} {kw}".strip()] + ([f"{road.group(1)} {kw}"] if road else [])
+        full = re.search(r"([가-힣0-9]+(?:로|길))\s*(\d+(?:-\d+)?)", store.get("addr_road") or "")
+        # 도로명 주소 자체로도 검색 (상호가 완전히 바뀐 경우: 그 주소에 있는 가게가 나온다)
+        qs = ([f"제주 {full.group(1)} {full.group(2)}"] if full else []) + [f"{emd} {kw}".strip()] + ([f"{road.group(1)} {kw}"] if road else [])
         hits = []
         for q in qs:
             queries.append(q)
@@ -217,6 +219,57 @@ def check_store(store: dict) -> dict:
     }
     save(row)
     return row
+
+
+def same_address(store: dict, it: dict) -> bool:
+    rk, jk = road_key(store.get("addr_road")), jibun_key(store.get("addr_jibun"))
+    return bool((rk and rk == road_key(it.get("roadAddress"))) or (jk and jk == jibun_key(it.get("address"))))
+
+
+def link_naver_name(store_id: int, naver_name: str, confirm: bool = True) -> dict:
+    """사장님이 알려 준 네이버 상호로 검색해, 주소가 우리 가게와 같으면 '다른 상호로 등록'으로 연결한다.
+
+    confirm=False 는 '이 가게는 우리 가게가 아니에요' (같은 주소 후보를 사장님이 아니라고 함) → 미등록으로 둔다.
+    주소가 다르면 연결하지 않고 후보만 돌려준다 (남의 가게에 잘못 연결되지 않게)."""
+    stores = db.rows("SELECT store_id, name, emd, addr_road, addr_jibun FROM stores WHERE store_id=?", [store_id])
+    if not stores:
+        return {"error": f"store_id {store_id} 가게가 없음. find_store로 먼저 찾을 것."}
+    s = stores[0]
+    now = datetime.now().isoformat(timespec="seconds")
+    if not confirm:
+        prev = db.rows("SELECT * FROM naver_check WHERE store_id=?", [store_id])
+        save({"store_id": store_id, "status": 0, "naver_title": None, "naver_category": None, "naver_road": None,
+              "naver_jibun": None, "lat": None, "lng": None, "name_score": 0, "addr_match": 0,
+              "queries": f"사장님: '{(prev[0]['naver_title'] if prev else naver_name) or ''}'은 우리 가게 아님", "checked_at": now})
+        return {"store_id": store_id, "linked": False, "naver_status": "미등록 후보",
+                "message": "같은 주소의 다른 가게로 기록했어요. 네이버 지도 등록을 도와드릴 수 있어요."}
+    name = (naver_name or "").strip()
+    if len(name) < 2:
+        return {"error": "네이버 지도에 올라간 가게 이름을 알려 주세요"}
+    try:
+        items = search(f"{name} {s['emd'] or ''}".strip()) + search(f"제주 {name}")
+    except NaverError as e:
+        return {"error": f"네이버 검색 실패: {e}"}
+    hit = next((it for it in items if same_address(s, it)), None)
+    if not hit:
+        seen, cands = set(), []
+        for it in items:
+            if it["title"] not in seen:
+                seen.add(it["title"]); cands.append({"title": it["title"], "road_address": it.get("roadAddress")})
+        return {"store_id": store_id, "linked": False,
+                "message": "그 이름으로 찾은 네이버 가게의 주소가 인허가 주소와 달라서 연결하지 않았어요. 가게를 옮겼거나 이름이 다를 수 있어요.",
+                "our_address": (s["addr_road"] or s["addr_jibun"] or "").replace("제주특별자치도 ", ""),
+                "naver_candidates": cands[:5]}
+    row = {"store_id": store_id, "status": 1, "naver_title": hit["title"], "naver_category": hit.get("category"),
+           "naver_road": hit.get("roadAddress"), "naver_jibun": hit.get("address"),
+           "lat": _coord(hit.get("mapy")), "lng": _coord(hit.get("mapx")),
+           "name_score": name_score(s["name"], hit["title"]), "addr_match": 1,
+           "queries": f"사장님 확인: {name}", "checked_at": now}
+    save(row)
+    return {"store_id": store_id, "linked": True, "naver_status": "다른 상호로 등록", "naver_name": hit["title"],
+            "naver_address": hit.get("roadAddress"),
+            "message": f"네이버 지도의 '{hit['title']}'과 주소가 같아 우리 가게로 연결했어요. 이제 네이버 이름으로 안내·홍보해요.",
+            "sources": ["네이버 지역 검색 API (NAVER API HUB)", "사장님 말씀"]}
 
 
 _write_lock = __import__("threading").Lock()
@@ -254,7 +307,7 @@ def check_naver_listed(store_id: int) -> dict:
     if cached:
         row, fresh = cached[0], False
     else:
-        stores = db.rows("SELECT store_id, name, emd, addr_road, addr_jibun FROM stores WHERE store_id=?", [store_id])
+        stores = db.rows("SELECT store_id, name, emd, addr_road, addr_jibun, category FROM stores WHERE store_id=?", [store_id])
         if not stores:
             return {"error": f"store_id {store_id} 가게가 없음. find_store로 먼저 찾을 것."}
         try:
@@ -262,6 +315,11 @@ def check_naver_listed(store_id: int) -> dict:
         except NaverError as e:
             return {"error": f"네이버 검색 실패: {e}"}
     status = STATUS[row["status"]]
+    renamed = bool(row["naver_title"]) and (
+        (row["status"] == 2 and row["addr_match"]) or (row["status"] == 1 and (row["name_score"] or 0) < 70))
+    if renamed:
+        status = "다른 상호로 등록"
+    owner_said = str(row.get("queries") or "").startswith("사장님")
     return {
         "store_id": store_id,
         "naver_status": status,
@@ -276,7 +334,13 @@ def check_naver_listed(store_id: int) -> dict:
             "미등록 후보": "사장님께 네이버 스마트플레이스 등록을 권하고, 소개글·메뉴판 초안을 save_draft로 만들어 드릴 수 있음",
             "확인 필요": "네이버에 비슷한 가게가 있으나 상호나 주소가 다름. 사장님께 상호 변경·이전 여부를 여쭤볼 것",
             "등록": "이미 네이버 지도에 있음",
-        }[status],
+            "다른 상호로 등록": ("사장님이 확인한 네이버 상호. 안내·홍보는 네이버 이름으로" if owner_said else
+                           f"같은 주소에 네이버 '{row['naver_title']}'이(가) 있음. 사장님 가게가 맞는지 먼저 여쭤보고, "
+                           "맞으면 link_naver_name(confirm=true), 아니면 link_naver_name(confirm=false)"),
+        }[status] + ("" if status in ("등록", "다른 상호로 등록") else
+                     " — 등록 자료를 만들기 전에 '네이버에 다른 이름으로 이미 올라가 있나요?'를 먼저 여쭤볼 것. "
+                     "있다고 하면 그 이름으로 link_naver_name"),
+        "owner_confirmed": owner_said,
         "method": "네이버 지역 검색 결과와 상호 유사도·주소(도로명+건물번호/지번) 일치로 판별. 검색어 차이로 놓칠 수 있어 '미등록 후보'로 표기",
         "sources": db.cite("stores") + ["네이버 지역 검색 API (NAVER API HUB)"],
     }
