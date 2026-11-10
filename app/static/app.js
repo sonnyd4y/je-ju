@@ -266,10 +266,15 @@ async function renderHome() {
     const best = regs[0];
     if (best) {
       const nm = short(best.region), sub = josa(nm, "이", "가").slice(nm.length);
-      $("#hero h1").innerHTML = `${esc(dayLabel(state.day))} ${esc(state.slot)}엔 <em>${esc(nm)}</em>${best.crowd_level === "한산" ? sub + " 가장 한산해요" : best.crowd_level === "보통" ? sub + " 가장 덜 붐벼요" : "도 붐벼요. 시간을 바꿔 보세요"}`;
+      const worst = regs[regs.length - 1], tie = regs.length > 1 && best.crowd_level === worst.crowd_level;
+      const when = `${esc(dayLabel(state.day))} ${esc(state.slot)}엔`;
+      $("#hero h1").innerHTML = tie
+        ? `${when} 고른 동네 모두 <em>${esc(best.crowd_level)}</em>이에요`
+        : `${when} <em>${esc(nm)}</em>${best.crowd_level === "한산" ? sub + " 가장 한산해요" : best.crowd_level === "보통" ? sub + " 가장 덜 붐벼요" : "도 붐벼요. 시간을 바꿔 보세요"}`;
+      const roomy = regs.filter((r) => r.balance === "여유").length;
       $("#hero").insertAdjacentHTML("beforeend", `<div class="stats"><div class="stat"><b>${rec.candidates.toLocaleString()}</b>후보 식당</div>
         <div class="stat"><b>${regs.filter((r) => r.crowd_level !== "붐빔").length}/${regs.length}</b>덜 붐비는 동네</div>
-        <div class="stat"><b>${esc(short(regs[regs.length - 1].region))}</b>가장 붐빔</div></div>`);
+        ${tie ? `<div class="stat"><b>${roomy}/${regs.length}</b>생활권 여유</div>` : `<div class="stat"><b>${esc(short(worst.region))}</b>가장 붐빔</div>`}</div>`);
     }
     $("#homeCrowd").innerHTML = regs.map((r) => {
       const n = order[r.crowd_level] + 1;
@@ -359,7 +364,11 @@ function openSheet(html) {
 function closeSheet() { $("#sheet")?.remove(); }
 async function drawMap() {
   const key = `${dateFor(state.day)}|${state.slot}|${state.regions.join(",")}`;
-  if (mapCache.key !== key) mapCache = { key, data: await api(`/api/map?when=${dateFor(state.day)}&time_slot=${encodeURIComponent(state.slot)}&store_regions=${encodeURIComponent(state.regions.join(","))}`) };
+  if (mapCache.key !== key) {
+    $(".map-wrap").insertAdjacentHTML("beforeend", `<div class="map-hint" id="mapLoading">${ic("refresh")} 혼잡 예측을 불러오는 중…</div>`);
+    try { mapCache = { key, data: await api(`/api/map?when=${dateFor(state.day)}&time_slot=${encodeURIComponent(state.slot)}&store_regions=${encodeURIComponent(state.regions.join(","))}`) }; }
+    finally { $("#mapLoading")?.remove(); }
+  }
   const d = mapCache.data, z = mapObj.getZoom();
   Object.values(mapLayers).forEach((l) => mapObj.removeLayer(l));
   mapLayers = {};
@@ -555,7 +564,7 @@ async function renderStore() {
   v.innerHTML = `
     <div class="card"><div class="store-head"><div class="av">${ic("store")}</div>
       <div style="min-width:0;flex:1"><h1 style="margin:0;font-size:1.4em">${who}</h1>
-        <div class="small muted">${esc(s.category || "")} · ${esc(s.city)} ${esc(s.emd)} · ${years}년째 · ${esc((s.addr_road || s.addr_jibun || "").replace("제주특별자치도 ", "").split(",")[0])}</div>
+        <div class="small muted">${esc(s.category || "")} · ${esc(s.city)} ${esc(s.emd)} · <span title="인허가일 기준 · 주인이 바뀌어도 이어질 수 있어요">인허가 ${years}년</span> · ${esc((s.addr_road || s.addr_jibun || "").replace("제주특별자치도 ", "").split(",")[0])}</div>
         <div class="row" style="margin-top:6px">${st === "등록" ? NAVER_BADGE("등록") : st === "미등록 후보" ? `<span class="badge b-hidden">네이버 지도에 없음</span>` : NAVER_BADGE(st)}${nv.naver_match?.title && nv.naver_match.title !== s.name ? `<span class="small muted">네이버: ${esc(nv.naver_match.title)}</span>` : ""}</div></div>
       <button class="btn ghost sm" id="changeStore">가게 바꾸기</button></div></div>
     <div class="kpis" style="margin-top:12px">

@@ -63,6 +63,17 @@ def warm_up():
     except Exception as e:
         print(f"[warm-up] 건너뜀: {e}")
 
+    # 수요 예측 모델(불러오기 수 초)과 오늘 예측은 뒤에서 미리 준비 — 서버는 바로 응답 가능
+    def _preload():
+        try:
+            from app.tools import forecast
+            if forecast._load():
+                forecast._day_preds(date.today().isoformat())
+        except Exception as e:
+            print(f"[warm-up] 예측 모델 건너뜀: {e}")
+    import threading
+    threading.Thread(target=_preload, daemon=True).start()
+
 
 @app.get("/api/health")
 def health():

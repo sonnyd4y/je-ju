@@ -21,6 +21,11 @@ METRICS_PATH = db.ROOT / "data/processed/demand_metrics.json"
 
 
 def _holidays(years):
+    return _holidays_cached(tuple(int(y) for y in years))
+
+
+@lru_cache(maxsize=16)
+def _holidays_cached(years: tuple):
     import holidays
     return holidays.KR(years=years)
 
@@ -79,6 +84,15 @@ def is_holiday(date: str) -> bool:
     return d in _holidays([d.year])
 
 
+@lru_cache(maxsize=64)
+def _day_preds(date: str) -> dict[str, float]:
+    """그 날 모든 동네를 한 번에 예측해 둔다 (지도처럼 동네 42곳을 연달아 물을 때 한 번만 계산)."""
+    bundle = _load()
+    keys = list(bundle["codes"])
+    X = features(pd.Series([date] * len(keys)), pd.Series([bundle["codes"][k] for k in keys]))
+    return dict(zip(keys, np.exp(bundle["model"].predict(X)).tolist()))
+
+
 def predict_day_ratio(city: str, emds: list[str], date: str) -> float | None:
     """그 날 방문인구가 동네 평소(평균)의 몇 배일지. 모델이 없거나 공휴일이면 None (호출 쪽에서 요일 평균 사용)."""
     bundle = _load()
@@ -88,8 +102,8 @@ def predict_day_ratio(city: str, emds: list[str], date: str) -> float | None:
     keys = [f"{city} {e}" for e in emds if f"{city} {e}" in codes]
     if not keys:
         return None
-    X = features(pd.Series([date] * len(keys)), pd.Series([codes[k] for k in keys]))
-    pred = np.exp(model.predict(X))
+    day = _day_preds(date)
+    pred = np.array([day[k] for k in keys])
     w = np.array([base[k] for k in keys])  # 동네 규모로 가중
     return float((pred * w).sum() / w.sum())
 
