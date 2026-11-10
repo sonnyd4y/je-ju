@@ -29,7 +29,8 @@ from app.tools import cards, drafts, insight, naver, places, recommend, reviews,
 app = FastAPI(title="제주 동네가게 AI Agent")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.getenv("CORS_ORIGINS", "http://localhost:5173,capacitor://localhost,http://localhost").split(","),
+    allow_origins=os.getenv("CORS_ORIGINS", "http://localhost:8000,http://localhost,capacitor://localhost,"
+                                         "https://jeju-local-agent.web.app,https://jeju-local-agent.firebaseapp.com").split(","),
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -208,6 +209,24 @@ def api_store(store_id: int):
         "reviews": rv if "error" not in rv else None,
         "drafts": drafts.list_drafts(s["name"])["history"],
     }
+
+
+@app.post("/api/report")
+def api_report(body: dict):
+    """사용자 신고: '문 닫았어요' 등. 신고된 가게는 추천에서 빠진다 (가게당 같은 종류 신고는 하루 20건까지)."""
+    import sqlite3
+    sid, kind = body.get("store_id"), str(body.get("kind") or "closed")
+    if not isinstance(sid, int) or kind not in ("closed", "renamed", "wrong_location"):
+        raise HTTPException(400, "store_id(숫자)와 kind(closed|renamed|wrong_location)가 필요합니다.")
+    if not db.rows("SELECT 1 FROM stores WHERE store_id=?", [sid]):
+        raise HTTPException(404, "가게 없음")
+    note = str(body.get("note") or "")[:200]
+    with sqlite3.connect(db.DB_PATH, timeout=30) as con:
+        con.execute("CREATE TABLE IF NOT EXISTS store_reports (store_id INTEGER, kind TEXT, note TEXT, created_at TEXT)")
+        n = con.execute("SELECT count(*) FROM store_reports WHERE store_id=? AND kind=? AND created_at >= date('now')", [sid, kind]).fetchone()[0]
+        if n < 20:
+            con.execute("INSERT INTO store_reports VALUES (?,?,?,datetime('now'))", [sid, kind, note])
+    return {"ok": True, "message": "알려 주셔서 고마워요. 확인 전까지 추천에서 빼 둘게요." if kind == "closed" else "알려 주셔서 고마워요."}
 
 
 @app.get("/api/regions")

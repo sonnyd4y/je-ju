@@ -6,6 +6,12 @@
   숨은 가게    네이버 지도 미등록 후보 1.0 / 미확인 0.6 / 등록 0.3                       ← 780 + 네이버 검색
   오래된 가게  영업 기간 (10년 이상 1.0, 그 아래는 비례)                                  ← 780 인허가일
 가중치 기본 0.35 / 0.25 / 0.20 / 0.20, priority로 강조할 기준을 고르면 그 기준에 0.15를 더 준다.
+
+영업 신뢰도 (인허가는 폐업 신고를 안 하면 '영업'으로 남으므로)
+  확인됨       네이버에 같은 상호 또는 같은 주소로 등록
+  가능성 높음  네이버에 없고 최근 10년 안에 인허가
+  확인 필요    네이버에 없고 15년 넘음 → '오래된 가게' 점수 0, 화면에 '방문 전 영업 확인' 표시
+  사용자 신고  '문 닫았어요' 신고가 있으면 추천에서 제외 (store_reports)
 """
 from datetime import date
 
@@ -18,6 +24,13 @@ BASE_WEIGHTS = {"quiet": 0.35, "balance": 0.25, "hidden": 0.20, "longevity": 0.2
 LEVEL_SCORE = {"한산": 1.0, "보통": 0.5, "붐빔": 0.0}
 BALANCE_SCORE = {"여유": 1.0, "주의": 0.8, "과밀": 0.5}
 HIDDEN_SCORE = {0: 1.0, None: 0.6, 1: 0.3}
+
+
+def _reported_closed() -> set[int]:
+    try:
+        return {r["store_id"] for r in db.rows("SELECT store_id FROM store_reports WHERE kind='closed'")}
+    except Exception:
+        return set()
 
 
 def _weights(priority: str) -> dict:
@@ -39,6 +52,7 @@ def recommend_stores(regions_text: str, category: str = "", when: str = "", time
     w = _weights(priority)
     asof = db.rows("SELECT max(open_date) d FROM stores")[0]["d"] or date.today().isoformat()
     region_info, cands = [], []
+    reported = _reported_closed()
     for nm in names[:6]:
         r = regions.resolve(nm)
         if not r:
@@ -76,17 +90,23 @@ def recommend_stores(regions_text: str, category: str = "", when: str = "", time
                 nv = "미등록 후보"
             else:
                 nv = "미확인"
+            verified = nv in ("등록", "다른 상호로 등록")
+            confidence = "확인됨" if verified else "가능성 높음" if years < 10 else "확인 필요" if years >= 15 else "보통"
+            if s["store_id"] in reported:
+                continue
             sc = {
                 "quiet": LEVEL_SCORE.get(lv, 0.5),
                 "balance": BALANCE_SCORE.get(bal.get("level"), 0.8),
                 "hidden": {"미등록 후보": 1.0, "미확인": 0.6, "확인 필요": 0.5}.get(nv, 0.3),
-                "longevity": min(years / 10, 1.0),
+                # 오래 영업했다는 가산점은 지금도 영업이 확인된 가게에만 (폐업 신고만 안 한 가게를 높이지 않게)
+                "longevity": min(years / 10, 1.0) if verified else 0.0,
             }
             total = sum(w[k] * v for k, v in sc.items())
             cands.append({
                 "store_id": s["store_id"], "name": s["name"], "category": s["category"], "region": r["label"],
                 "address": (s["addr_road"] or s["addr_jibun"] or "").replace("제주특별자치도 ", "").split(",")[0],
                 "years_open": round(years, 1),
+                "open_confidence": confidence,
                 "naver": nv,
                 "naver_name": s["naver_title"] if nv in ("등록", "다른 상호로 등록") and s["naver_title"] != s["name"] else None,
                 "lat": s["lat"], "lng": s["lng"],
