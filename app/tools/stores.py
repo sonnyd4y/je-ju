@@ -31,6 +31,9 @@ CATEGORY_ALIASES = {
 NON_RESTAURANT = ["편의점", "극장", "공항", "관광호텔", "유원지", "백화점", "출장조리"]
 
 
+# 해수욕장 계절음식점·마을 단체 이름의 인허가 (여름 한철 운영) — 추천·목록에서 뺀다
+SEASONAL_SQL = "(name LIKE '%계절음식점%' OR name LIKE '%청년회' OR name LIKE '%부녀회%')"
+
 def _norm_name(s: str) -> str:
     s = re.sub(r"\(.*?\)", "", s or "")
     s = re.sub(r"(주식회사|\(주\)|㈜)", "", s)
@@ -118,7 +121,7 @@ def search_stores(
     limit: int = 20,
 ) -> dict:
     """지역·업태·개업일·네이버 미등록 여부로 영업 중인 가게 목록을 조회한다."""
-    sql = [f"SELECT {STORE_COLS} FROM stores WHERE status LIKE '영업%'"]
+    sql = [f"SELECT {STORE_COLS} FROM stores WHERE status LIKE '영업%' AND NOT {SEASONAL_SQL}"]
     params: list = []
     label = "제주 전체"
     if region:

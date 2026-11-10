@@ -52,14 +52,16 @@ SCENARIOS = [
         "name": "관광객_식당추천_생활권보호",
         "mode": "tourist",
         "turns": ["구좌에서 사람 많지 않은 현지 한식당 3곳 추천해 줘"],
-        "must_call": ["search_stores", "resident_balance"],
+        # recommend_stores(추천 모델)는 동네 생활권(resident_balance)을 점수에 이미 넣는다
+        "must_call": ["search_stores|recommend_stores", "resident_balance|recommend_stores"],
+        "must_say": ["인허가", "예측", "패턴"],
     },
     {
         "name": "관광객_네이버미등록가게",
         "mode": "tourist",
         "turns": ["애월에서 네이버 지도에도 잘 안 나오는 숨은 동네 식당 알려줘"],
-        "must_call": ["search_stores"],
-        "tool_input": {"search_stores": {"unlisted_only": True}},
+        "must_call": ["search_stores|recommend_stores"],
+        "tool_input": {"search_stores": {"unlisted_only": True}},  # search_stores를 썼다면 미등록만 골라야 함
         "must_say": ["확인", "방문 전"],
     },
     {
@@ -75,6 +77,15 @@ SCENARIOS = [
         "turns": ["애월 콩지쿡 사장인데 네이버 지도에 우리 가게 올리고 싶어요"],
         "must_call": ["find_store", "make_listing_kit"],
         "must_not_call": ["decide_draft"],
+    },
+    {
+        "name": "사장님_리뷰붙여넣기",
+        "mode": "owner",
+        "turns": ["손님 리뷰 몇 개 붙여넣을게요. 우리 가게 강점이 뭔지 정리해 주세요.\n"
+                  "고기가 부드럽고 맛있어요\n사장님이 정말 친절하세요\n주차할 곳이 없어서 불편했어요\n반찬이 깔끔하고 맛있어요"],
+        "must_call": ["analyze_review_text"],
+        "must_not_call": ["decide_draft"],
+        "must_say": ["친절"],
     },
     {
         "name": "범위밖_지역",
@@ -205,7 +216,7 @@ async def run_scenario(sc: dict, model: str) -> dict:
             text, img, mt = turn, None, ""
         user_text += text + "\n"
         out = []
-        async for ev in loop.run(session, text, img, mt, model=model):
+        async for ev in loop.run(session, text, img, mt, model=None if model == "auto" else model):
             if ev["type"] == "usage":
                 usd += ev["usd"]
                 tokens += ev["input"] + ev["output"] + ev["cache_read"] + ev["cache_write"]
@@ -226,7 +237,7 @@ async def run_scenario(sc: dict, model: str) -> dict:
     evidence = json.dumps(results, ensure_ascii=False, default=str) + user_text + " ".join(map(str, sc.get("image_facts", [])))
     bad_numbers = ungrounded_numbers(answer, evidence)
     checks = {
-        "must_call": all(t in names for t in sc.get("must_call", [])),
+        "must_call": all(any(o in names for o in t.split("|")) for t in sc.get("must_call", [])),
         "must_not_call": not any(t in names for t in sc.get("must_not_call", [])),
         "cites_source": ("근거" in answer) if calls else True,
         "must_say": any(w in answer for w in sc["must_say"]) if sc.get("must_say") else True,
@@ -236,6 +247,8 @@ async def run_scenario(sc: dict, model: str) -> dict:
         "no_internal_ids": not re.search(r"\bE\d{1,2}\b", answer),  # 근거 번호는 내부용
     }
     for tool, want in sc.get("tool_input", {}).items():
+        if tool not in names:
+            continue
         checks[f"input_{tool}"] = any(
             c["name"] == tool and all(c["input"].get(k) == v for k, v in want.items()) for c in calls
         )
@@ -300,9 +313,9 @@ async def main_async(keyword: str, model: str, out_name: str):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("-k", default="", help="이름에 이 단어가 들어간 시나리오만")
-    ap.add_argument("--model", default=loop.MODEL, help="비교할 Claude 모델 (예: claude-sonnet-5-5, claude-haiku-5-5)")
+    ap.add_argument("--model", default="auto", help="auto = 실제 서비스처럼 모드별 모델(사장님/관광객). 또는 비교할 모델 ID")
     a = ap.parse_args()
-    out_name = "eval_results.json" if a.model == loop.MODEL else f"eval_results_{a.model}.json"
+    out_name = "eval_results.json" if a.model == "auto" else f"eval_results_{a.model}.json"
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
         copy = Path(tmp) / "eval.db"
         shutil.copy(db.DB_PATH, copy)

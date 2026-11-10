@@ -101,7 +101,23 @@ def resolve(name: str) -> dict | None:
         admins = sorted({a for k in hits for a in LEGAL_TO_ADMIN[k]})
         legals = sorted({l for _, l in hits})
         return {"label": hits[0][1], "city": hits[0][0], "admin": admins, "legal": legals}
-    return None
+    return _resolve_ri(q, city)
+
+
+def _resolve_ri(q: str, city: str | None) -> dict | None:
+    """'세화', '한동리', '협재' 같은 리(里) 이름 → 그 리가 속한 읍·면 (가게 지번 주소 기준, 가게가 가장 많은 곳)."""
+    if len(q) < 2 or not re.fullmatch(r"[가-힣0-9]+", q):
+        return None
+    from app.data import db  # 순환 import 방지
+    ri = q if q.endswith("리") else q + "리"
+    row = db.rows("SELECT city, emd, count(*) n FROM stores WHERE addr_jibun LIKE ? " + ("AND city = ? " if city else "") +
+                  "GROUP BY city, emd ORDER BY n DESC LIMIT 1", [f"% {ri} %"] + ([city] if city else []))
+    if not row:
+        return None
+    r = resolve(f"{row[0]['city']} {row[0]['emd']}")
+    if r:
+        r = {**r, "label": f"{r['label']} {ri}", "note": f"{ri}는 {row[0]['emd']} 안의 마을이라 {row[0]['emd']} 전체로 찾았어요"}
+    return r
 
 
 def admin_of(city: str | None, legal: str | None) -> list[str]:

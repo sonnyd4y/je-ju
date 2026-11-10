@@ -17,7 +17,7 @@ from datetime import date
 
 from app.data import db, regions
 from app.tools import insight
-from app.tools.stores import CATEGORY_ALIASES, NON_RESTAURANT
+from app.tools.stores import CATEGORY_ALIASES, NON_RESTAURANT, SEASONAL_SQL
 
 CRITERIA = {"quiet": "덜 붐빔", "balance": "생활권 여유", "hidden": "숨은 가게", "longevity": "오래된 가게"}
 BASE_WEIGHTS = {"quiet": 0.35, "balance": 0.25, "hidden": 0.20, "longevity": 0.20}
@@ -66,7 +66,7 @@ def recommend_stores(regions_text: str, category: str = "", when: str = "", time
                             if crowd.get("forecast") else ""})
         sql = (f"SELECT s.store_id, s.name, s.category, s.open_date, s.addr_road, s.addr_jibun, s.emd, s.naver_listed, s.lat, s.lng, "
                f"n.status AS n_status, n.naver_title, n.addr_match FROM stores s LEFT JOIN naver_check n USING(store_id) "
-               f"WHERE s.status LIKE '영업%' AND s.city=? AND s.emd IN ({','.join('?' * len(r['legal']))})")
+               f"WHERE s.status LIKE '영업%' AND NOT {SEASONAL_SQL.replace('name', 's.name')} AND s.city=? AND s.emd IN ({','.join('?' * len(r['legal']))})")
         params = [r["city"], *r["legal"]]
         if require_coords:  # 지도·일정용: 좌표 있는 가게만
             sql += " AND s.lat IS NOT NULL"
@@ -122,7 +122,9 @@ def recommend_stores(regions_text: str, category: str = "", when: str = "", time
         "candidates": len(cands),
         "weights": {CRITERIA[k]: v for k, v in w.items()},
         "recommendations": top,
-        "how_to_read": "score = 네 기준 점수 × 가중치의 합 (0~1). score_parts는 기준별 기여. 동네가 한산하고 생활권 여유가 있을수록, "
+        "how_to_read": "years_open은 인허가일부터 지난 햇수예요. 주인·상호·메뉴가 바뀌어도 처음 인허가일이 이어질 수 있으니 "
+                       "'개업 N년'·'N년 된 가게'라고 단정하지 말고 '인허가 기준 N년'이라고 말하세요. "
+                       "score = 네 기준 점수 × 가중치의 합 (0~1). score_parts는 기준별 기여. 동네가 한산하고 생활권 여유가 있을수록, "
                        "네이버에 없는 오래된 동네 가게일수록 높다. 미등록 후보는 영업시간 정보가 없으니 방문 전 확인을 안내할 것.",
         "method": "다기준 가중 점수(MCDA). 같은 입력이면 같은 순위 (재현 가능).",
         "sources": db.cite("stores", "pop_daily", "meal_time_pattern") + ["네이버 지역 검색 (등록 여부)"],
