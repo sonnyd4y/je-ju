@@ -9,6 +9,7 @@ AI 이미지 생성이 아니라 HTML 템플릿에 가게 정보·메뉴·가격
 """
 import base64
 import io
+import re
 import urllib.parse
 from pathlib import Path
 
@@ -70,9 +71,20 @@ def build_html(d: dict, fmt: str = "feed") -> str:
         two_col = n > 9
         per_col = (n + 1) // 2 if two_col else n
         item_size = 52 if per_col <= 6 else 44 if per_col <= 8 else 38 if per_col <= 10 else 32
+        eyebrow = "TODAY · 오늘의 메뉴" if d["kind"] == "today" else "MENU · 차림표"
+        title, body = d.get("title") or "", d.get("body") or ""
+        # 위 머리글·메뉴 목록과 같은 말이면 다시 쓰지 않는다
+        if re.sub(r"\s", "", title) in re.sub(r"\s", "", eyebrow) + "메뉴판차림표":
+            title = ""
+        rest = body
+        for i in items:
+            rest = rest.replace(i["name"], "")
+            if i.get("price") is not None:
+                rest = rest.replace(f"{i['price']:,}", "").replace(str(i["price"]), "")
+        if not re.search(r"[가-힣A-Za-z]{2,}", rest.replace("원", "")):
+            body = ""
         return _env.get_template("menu.html").render(
-            eyebrow="TODAY · 오늘의 메뉴" if d["kind"] == "today" else "MENU · 차림표",
-            store_name=d["store_name"], title=d.get("title") or "", body=d.get("body") or "",
+            eyebrow=eyebrow, store_name=d["store_name"], title=title, body=body,
             items=[{"name": i["name"], "price": i.get("price"), "note": i.get("note")} for i in items],
             two_col=two_col, item_size=item_size, row_pad=max(10, 30 - per_col * 2),
             title_size=84 if len(d["store_name"]) <= 8 else 66,
