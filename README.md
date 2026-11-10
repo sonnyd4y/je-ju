@@ -8,7 +8,7 @@
 | **도민 가게 사장님** | 우리 동네 손님 분석 → 네이버 지도 등록 확인·등록 자료 → 근거 있는 홍보 문구·메뉴판·홍보 이미지 초안 → **사장님 승인 후 확정** |
 | **관광객** | 덜 붐비는 시간·동네의 현지 식당 추천 (도민 생활권이 붐비는 동네는 덜 추천), 하루 일정, 지도 |
 
-- 데모: https://je-ju-426798142372.asia-northeast3.run.app (Google Cloud Run)
+- 데모: **https://jeju-local-agent.web.app** (화면: Firebase Hosting · 서버: Google Cloud Run `https://je-ju-426798142372.asia-northeast3.run.app`)
 - 소스: https://github.com/sonnyd4y/je-ju
 - 문서: [사용자 매뉴얼](docs/사용자매뉴얼.md) · [데이터 활용 명세](docs/데이터활용명세.md) · [개발 진행 기록·결정 사항](개발진행.md) · [개발 계획](개발계획.md)
 
@@ -123,6 +123,13 @@ python scripts/train_demand.py            # 방문 수요 예측 모델 학습·
 pip install -r requirements-ml.txt        # (선택) PyTorch CPU·transformers
 python scripts/build_review_sentiment.py  # 리뷰 감성 미리 계산
 python scripts/sync_licenses.py 새파일.csv  # 이후 인허가 갱신분만 반영
+```
+
+### 데모 배포
+
+```bash
+gcloud run deploy je-ju --source . --region asia-northeast3   # 서버 (Cloud Run)
+python scripts/deploy_firebase.py                              # 화면 (Firebase Hosting, config.js에 서버 주소)
 ```
 
 ### 검증
