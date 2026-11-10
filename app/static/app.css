@@ -382,3 +382,4 @@ input:focus, select:focus { outline: 2px solid var(--sea); border-color: transpa
 .nb b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nb.same { border-color: var(--accent); background: var(--accent-50); }
 #rvText { width: 100%; font: inherit; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; resize: vertical; background: var(--surface); color: var(--ink); }
+.hero .hero-fine { margin-top: 6px; font-size: .78em; opacity: .8; }

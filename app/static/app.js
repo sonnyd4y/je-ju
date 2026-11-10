@@ -240,7 +240,8 @@ async function renderHome() {
   const v = $("#v-home"), seq = ++renderSeq;
   v.innerHTML = `<div class="hero" id="hero"><div class="eyebrow">${ic("clock")} ${esc(dayLabel(state.day))} ${esc(state.slot)} · 과거 패턴 예측</div>
       <h1>덜 붐비는 제주, 동네 식당으로</h1><p>고른 동네의 식당 혼잡과 도민 생활권을 함께 보고 골랐어요</p>
-      <button class="btn hero-btn" id="nearBtn">${ic("locate")}내 주변 3km에서 찾기</button></div>
+      <button class="btn hero-btn" id="nearBtn">${ic("locate")}내 주변 3km에서 찾기</button>
+      <div class="hero-fine">위치는 버튼을 누를 때 한 번만, 약 100m 단위로 쓰고 저장하지 않아요</div></div>
     <div id="nearOut"></div>
     ${filtersHTML()}
     <h2 class="sec">${ic("trend")} 동네별 붐빔 <span class="hint">그 시간 식당 혼잡 · 3단계</span></h2>
@@ -298,7 +299,8 @@ async function findNearby() {
   const pos = await new Promise((ok) => navigator.geolocation.getCurrentPosition(ok, () => ok(null), { timeout: 10000, maximumAge: 300000 }));
   btn.disabled = false; btn.innerHTML = `${ic("locate")}내 주변 3km에서 찾기`;
   if (!pos) return toast("위치를 받지 못했어요. 브라우저 위치 권한을 확인해 주세요");
-  const { latitude: lat, longitude: lng } = pos.coords;
+  // 약 100m 단위로만 보낸다 (정밀 위치는 서버·접속 기록에 남기지 않음)
+  const lat = Math.round(pos.coords.latitude * 1000) / 1000, lng = Math.round(pos.coords.longitude * 1000) / 1000;
   out.innerHTML = `<div class="skeleton" style="height:160px;margin-top:16px"></div>`;
   try {
     const r = await api(`/api/nearby?lat=${lat}&lng=${lng}&when=${dateFor(state.day)}&time_slot=${encodeURIComponent(state.slot)}`);

@@ -181,7 +181,8 @@ def api_itinerary(regions: str, when: str = "", start: str = "10:00", stops: int
 def api_nearby(lat: float, lng: float, when: str = "", time_slot: str = "점심", radius_km: float = 3.0):
     if not (33.0 <= lat <= 34.0 and 126.0 <= lng <= 127.2):
         raise HTTPException(400, "제주 안에서만 쓸 수 있어요")
-    return places.nearby(lat, lng, when, time_slot, min(max(radius_km, 0.5), 10))
+    # 정밀 좌표가 와도 약 100m 단위로만 쓴다
+    return places.nearby(round(lat, 3), round(lng, 3), when, time_slot, min(max(radius_km, 0.5), 10))
 
 
 @app.post("/api/reviews/analyze")
