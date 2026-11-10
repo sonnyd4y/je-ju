@@ -413,3 +413,24 @@ def test_today_menu_requires_items(temp_db):
     assert "error" in drafts.save_draft("가게", "today", "오늘 메뉴")
     ok = drafts.save_draft("가게", "today", "오늘 메뉴", items=[{"name": "갈치조림", "price": 25000}])
     assert ok["status"] == "pending"
+
+
+def test_nearby_within_radius():
+    from app.tools import places
+    r = places.nearby(33.4625, 126.315, "", "점심", 3)
+    assert r["recommendations"]
+    assert all(s["distance_km"] <= 3 and s["walk_min"] >= 1 for s in r["recommendations"])
+
+
+def test_review_text_paste():
+    from app.tools import reviews
+    r = reviews.analyze_review_text("국물이 진하고 맛있어요\n주차가 불편해요\n사장님이 친절해요")
+    assert r["reviews"] == 3
+    assert {x["factor"] for x in r["strengths"]} >= {"맛", "친절"}
+    assert [x["factor"] for x in r["complaints"]] == ["주차"]
+    assert "error" in reviews.analyze_review_text("  ")
+
+
+def test_review_text_tool_registered():
+    from app.agent import tools
+    assert "analyze_review_text" in {t["name"] for t in tools.TOOL_SPECS}

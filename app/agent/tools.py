@@ -143,6 +143,14 @@ TOOLS = [
         reviews.analyze_reviews,
     ),
     _tool(
+        "analyze_review_text",
+        "사장님이 대화창에 붙여넣은 리뷰 글(네이버·배달앱 등, 한 줄에 하나)을 요인별 강점·불만으로 나눈다. "
+        "리뷰 데이터가 없는 가게도 이 결과를 홍보 문구 근거('사장님 말씀'과 함께)로 쓸 수 있다.",
+        {"reviews_text": {"type": "string", "description": "붙여넣은 리뷰 전체 (줄바꿈으로 구분)"}},
+        ["reviews_text"],
+        reviews.analyze_review_text,
+    ),
+    _tool(
         "marketing_brief",
         "가게 홍보를 시작할 때 먼저 호출하는 마케팅 브리프: 진단(인허가·네이버 등록), 리뷰 강점·불만, 동네 손님층, 타깃 후보, "
         "게시 시점, 메시지 재료, 채널을 정리하고 모든 사실에 근거 번호(E1…)를 붙인다. 홍보 문구는 이 근거 번호로만 쓴다.",

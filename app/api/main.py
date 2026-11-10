@@ -177,6 +177,19 @@ def api_itinerary(regions: str, when: str = "", start: str = "10:00", stops: int
     return _ok(places.plan_itinerary(regions, when, start, stops, kinds, meals, category))
 
 
+@app.get("/api/nearby")
+def api_nearby(lat: float, lng: float, when: str = "", time_slot: str = "점심", radius_km: float = 3.0):
+    if not (33.0 <= lat <= 34.0 and 126.0 <= lng <= 127.2):
+        raise HTTPException(400, "제주 안에서만 쓸 수 있어요")
+    return places.nearby(lat, lng, when, time_slot, min(max(radius_km, 0.5), 10))
+
+
+@app.post("/api/reviews/analyze")
+def api_review_text(body: dict):
+    text = str(body.get("text") or "")[:30000]
+    return _ok(reviews.analyze_review_text(text))
+
+
 @app.get("/api/itinerary/candidates")
 def api_itinerary_candidates(regions: str, when: str = ""):
     return places.candidates(regions, when)
@@ -201,6 +214,12 @@ def api_store(store_id: int):
     s = rows[0]
     region = f"{s['city']} {s['emd']}"
     rv = reviews.analyze_reviews(s["name"])
+    # 우리 동네에 최근 1년 새로 생긴 가게 (인허가 기준일부터 1년)
+    asof = db.rows("SELECT max(open_date) d FROM stores")[0]["d"]
+    newbies = db.rows(
+        "SELECT name, category, open_date, addr_road FROM stores WHERE status LIKE '영업%' AND city=? AND emd=? "
+        "AND open_date >= date(?, '-1 year') AND store_id != ? ORDER BY (category = ?) DESC, open_date DESC LIMIT 12",
+        [s["city"], s["emd"], asof, store_id, s["category"]])
     return {
         "store": s,
         "naver": naver.check_naver_listed(store_id),
@@ -208,6 +227,7 @@ def api_store(store_id: int):
         "crowd": insight.predict_crowd(region),
         "reviews": rv if "error" not in rv else None,
         "drafts": drafts.list_drafts(s["name"])["history"],
+        "new_nearby": {"as_of": asof, "same_category": sum(1 for x in newbies if x["category"] == s["category"]), "stores": newbies},
     }
 
 

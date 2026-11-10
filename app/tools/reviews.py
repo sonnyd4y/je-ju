@@ -138,3 +138,26 @@ def analyze_reviews(store_name: str, limit_quotes: int = 2) -> dict:
         "notes": ["2021년 구글 리뷰(검증용 데이터)이며 현재 가게 상황과 다를 수 있음"],
         "sources": db.cite("reviews"),
     }
+
+
+def analyze_review_text(reviews_text: str) -> dict:
+    """사장님이 붙여넣은 리뷰(한 줄에 하나)를 요인별 긍정·부정으로 나눈다. 별점·작성자 정보는 받지 않는다."""
+    lines = [l.strip(" -•	") for l in (reviews_text or "").splitlines()]
+    texts = [l for l in lines if len(l) >= 4][:300]
+    if not texts:
+        return {"error": "리뷰를 한 줄에 하나씩 붙여넣어 주세요"}
+    pos, neg = Counter(), Counter()
+    quotes: dict[tuple[str, int], list[tuple[int, str]]] = defaultdict(list)
+    for t in texts:
+        for f, p in classify(t, None).items():
+            (pos if p > 0 else neg)[f] += 1
+            clause = next((c for c in _clauses(t) if any(w in c for w in FACTORS[f])), t)
+            quotes[(f, p)].append((abs(len(clause) - 30), _quote(clause)))
+    top = lambda c, sign: [{"factor": f, "count": n, "share": f"{n / len(texts):.0%}",
+                            "examples": [q for _, q in sorted(quotes[(f, sign)])[:2]]} for f, n in c.most_common(4)]
+    return {
+        "reviews": len(texts),
+        "strengths": top(pos, 1), "complaints": top(neg, -1),
+        "method": "규칙 기반 요인 분류 (요인 단어 + 긍정/부정 표현). 붙여넣은 글만 분석하고 저장하지 않음",
+        "sources": ["사장님이 붙여넣은 리뷰"],
+    }

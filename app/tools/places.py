@@ -284,3 +284,27 @@ def candidates(regions_text: str, when: str = "") -> dict:
                   (g["crowd_level"] for g in rec.get("regions", []) if g["region"] == x["region"]), "보통")}
              for x in rec.get("recommendations", [])]
     return {"pois": pois, "restaurants": foods}
+
+
+def nearby(lat: float, lng: float, when: str = "", time_slot: str = "점심", radius_km: float = 3.0, limit: int = 10) -> dict:
+    """내 위치 기준 추천: 반경 안 동네들을 추천 모델로 점수 매기고 거리와 함께 돌려준다."""
+    cents = db.rows("SELECT city, emd, lat, lng FROM region_centroids")
+    near = sorted(cents, key=lambda c: km(lat, lng, c["lat"], c["lng"]))
+    regions_near = [f"{c['city']} {c['emd']}" for c in near if km(lat, lng, c["lat"], c["lng"]) <= radius_km + 4][:4] or                    [f"{near[0]['city']} {near[0]['emd']}"]
+    rec = recommend.recommend_stores(",".join(regions_near), "", when, time_slot, limit=10, require_coords=True)
+    # 추천 모델은 동네별 상위만 주므로 반경 안 가게를 넉넉히 다시 받는다
+    pool = []
+    for rg in regions_near:
+        r2 = recommend.recommend_stores(rg, "", when, time_slot, limit=10, require_coords=True)
+        pool += r2.get("recommendations", [])
+    seen, out = set(), []
+    for s in pool + rec.get("recommendations", []):
+        if s["store_id"] in seen or s.get("lat") is None:
+            continue
+        d = km(lat, lng, s["lat"], s["lng"])
+        if d <= radius_km and s["category"] not in NOT_MEAL:
+            seen.add(s["store_id"])
+            out.append({**s, "distance_km": round(d, 2), "walk_min": max(1, round(d / 4.5 * 60))})
+    out.sort(key=lambda s: (-round(s["score"], 2), s["distance_km"]))
+    return {"center": [lat, lng], "radius_km": radius_km, "regions": rec.get("regions", []),
+            "recommendations": out[:limit], "sources": rec.get("sources", [])}

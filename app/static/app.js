@@ -48,6 +48,9 @@ const P = {
   megaphone: '<path d="M3 10v4h3l7 5V5L6 10zM16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"/>',
   layers: '<path d="m12 3 9 5-9 5-9-5zM3 13l9 5 9-5"/>', filter: '<path d="M4 5h16l-6 8v6l-4-2v-4z"/>',
   menu: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  heart: '<path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.1a4.3 4.3 0 0 1 7.5 2.7C19.5 15.4 12 20 12 20z"/>',
+  share: '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/>',
+  locate: '<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/>',
 };
 const ic = (k, cls = "") => `<svg class="i ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${P[k] || ""}</svg>`;
 
@@ -108,7 +111,13 @@ const dayLabel = (day) => ({ today: "오늘", tomorrow: "내일", sat: "이번 �
 const short = (n) => String(n).replace(/(읍|면)$/, "");
 // 받침에 따라 조사 고르기: josa("애월", "이", "가") → "애월이"
 const josa = (w, a, b) => { const c = String(w).charCodeAt(String(w).length - 1); return w + (c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 ? a : b); };
-let renderSeq = 0;  // 늦게 도착한 이전 화면 응답이 새 화면을 덮지 않게
+let renderSeq = 0;
+/* 찜: 이 기기에만 저장 (로그인 없음) */
+const FAV_KEYS = ["store_id", "name", "lat", "lng", "category", "region", "naver", "naver_name", "address", "level"];
+const favs = { all: () => store.get("favs", []), has: (id) => favs.all().some((f) => f.store_id === id),
+  toggle(s) { const a = favs.all(), on = a.some((f) => f.store_id === s.store_id);
+    store.set("favs", on ? a.filter((f) => f.store_id !== s.store_id) : [Object.fromEntries(FAV_KEYS.map((k) => [k, s[k]])), ...a].slice(0, 50)); return !on; } };
+const cardData = new Map();  // 카드 버튼 → 가게 정보  // 늦게 도착한 이전 화면 응답이 새 화면을 덮지 않게
 
 /* ================= 탐색 ================= */
 function renderNav() {
@@ -179,13 +188,14 @@ function storeCard(s, opts = {}) {
     ${opts.rank ? `<span class="rank">${opts.rank}</span>` : ""}
     <div class="top"><div class="ttl"><div class="name">${esc(s.name)}</div>
         ${s.naver_name ? `<div class="alias">네이버: ${esc(s.naver_name)}</div>` : ""}
-        <div class="meta">${esc(s.category || "")} · ${esc(s.region || "")}${s.years_open != null ? ` · ${Math.round(s.years_open)}년째` : ""}</div></div>
+        <div class="meta">${esc(s.category || "")} · ${esc(s.region || "")}${s.years_open != null ? ` · ${Math.round(s.years_open)}년째` : ""}${s.distance_km != null ? ` · <b class="dist">${s.distance_km < 1 ? Math.round(s.distance_km * 1000) + "m" : s.distance_km + "km"} · 걸어서 ${s.walk_min}분</b>` : ""}</div></div>
       ${s.score != null ? `<div class="score" style="--v:${Math.round(s.score * 100)}" title="추천 점수"><b>${Math.round(s.score * 100)}</b><small>점</small></div>` : ""}</div>
     <div class="row">${NAVER_BADGE(s.naver)}${s.open_confidence === "확인됨" ? `<span class="badge b-ok">영업 확인</span>` : s.open_confidence === "확인 필요" ? `<span class="badge b-warn" title="인허가는 폐업 신고를 하지 않으면 영업으로 남아 있어요">방문 전 영업 확인</span>` : ""}</div>
     ${parts ? `<div class="parts">${parts}</div>` : ""}
     ${s.address ? `<div class="meta">${ic("pin")} ${esc(s.address)}</div>` : ""}
     <div class="acts">${placeLinks(s)}
       ${opts.ask !== false ? `<button class="link-btn" data-ask="${esc(s.name)} (${esc(s.region || "")}) 어떤 곳이에요? 언제 가면 덜 붐벼요?">${ic("chat")}AI에게</button>` : ""}
+      ${s.store_id && s.lat != null ? (cardData.set(s.store_id, s), `<button class="link-btn fav" data-fav="${s.store_id}" aria-pressed="${favs.has(s.store_id)}">${ic("heart")}<span>${favs.has(s.store_id) ? "찜함" : "찜"}</span></button>`) : ""}
       ${s.store_id ? `<button class="link-btn quiet" data-closed="${s.store_id}" data-name="${esc(s.name)}">${ic("flag")}문 닫았어요</button>` : ""}</div>
   </div>`;
 }
@@ -194,6 +204,13 @@ function bindCards(root) {
   root.querySelectorAll("[data-ask]").forEach((b) => (b.onclick = () => askAI(b.dataset.ask)));
   root.querySelectorAll("[data-loc]").forEach((b) => (b.onclick = () => {
     const [lat, lng] = b.dataset.loc.split(",").map(Number); focusOn = { lat, lng, name: b.dataset.name }; go("map");
+  }));
+  root.querySelectorAll("[data-fav]").forEach((b) => (b.onclick = () => {
+    const s = cardData.get(+b.dataset.fav); if (!s) return;
+    const on = favs.toggle(s);
+    document.querySelectorAll(`[data-fav="${s.store_id}"]`).forEach((x) => { x.setAttribute("aria-pressed", String(on)); x.querySelector("span").textContent = on ? "찜함" : "찜"; });
+    toast(on ? `${s.name} 찜했어요 · 일정에 넣을 수 있어요` : "찜을 뺐어요");
+    if (current === "home") renderFavs();
   }));
   root.querySelectorAll("[data-closed]").forEach((b) => (b.onclick = async () => {
     const ok = await dialog({ title: `'${b.dataset.name}' 문을 닫았나요?`, body: "알려 주시면 확인 전까지 추천에서 빼 둘게요.", ok: "네, 닫았어요" });
@@ -222,19 +239,24 @@ function showOnboard() {
 async function renderHome() {
   const v = $("#v-home"), seq = ++renderSeq;
   v.innerHTML = `<div class="hero" id="hero"><div class="eyebrow">${ic("clock")} ${esc(dayLabel(state.day))} ${esc(state.slot)} · 과거 패턴 예측</div>
-      <h1>덜 붐비는 제주, 동네 식당으로</h1><p>고른 동네의 식당 혼잡과 도민 생활권을 함께 보고 골랐어요</p></div>
+      <h1>덜 붐비는 제주, 동네 식당으로</h1><p>고른 동네의 식당 혼잡과 도민 생활권을 함께 보고 골랐어요</p>
+      <button class="btn hero-btn" id="nearBtn">${ic("locate")}내 주변 3km에서 찾기</button></div>
+    <div id="nearOut"></div>
     ${filtersHTML()}
     <h2 class="sec">${ic("trend")} 동네별 붐빔 <span class="hint">그 시간 식당 혼잡 · 3단계</span></h2>
     <div id="homeCrowd" class="card"><div class="skeleton"></div></div>
     <h2 class="sec">${ic("utensils")} 추천 동네 식당 <span class="hint">4가지 기준 점수 순</span></h2>
     <div class="legend" style="margin-bottom:10px">${PARTS.map(([k, c]) => `<span><i style="background:${c}"></i>${k}</span>`).join("")}</div>
     <div id="homeRec" class="grid c2"><div class="skeleton" style="height:180px"></div><div class="skeleton" style="height:180px"></div></div>
+    <div id="favOut"></div>
     <div class="grid c2" style="margin-top:24px">
       <button class="tile" data-go2="plan"><span class="ic sea">${ic("calendar")}</span><b>하루 일정 짜기</b><span class="d">관광지·오름·해수욕장과 식당을 덜 붐비는 순서로, 실제 길찾기 시간까지</span></button>
       <button class="tile" data-go2="map"><span class="ic violet">${ic("map")}</span><b>지도로 보기</b><span class="d">동네 혼잡, 관광 장소, 숨은 식당 위치</span></button>
     </div>`;
   bindFilters(v, renderHome);
   v.querySelectorAll("[data-go2]").forEach((b) => (b.onclick = () => go(b.dataset.go2)));
+  $("#nearBtn").onclick = findNearby;
+  renderFavs();
   try {
     const rec = await api(`/api/recommend?regions=${encodeURIComponent(state.regions.join(","))}&when=${dateFor(state.day)}&time_slot=${encodeURIComponent(state.slot)}&limit=6`);
     if (seq !== renderSeq) return;
@@ -258,6 +280,33 @@ async function renderHome() {
       `<div class="source" style="grid-column:1/-1">${esc(rec.sources.join(", "))}</div>`;
     bindCards($("#homeRec"));
   } catch (e) { $("#homeRec").innerHTML = `<div class="error">${esc(e.message)}</div>`; $("#homeCrowd").innerHTML = ""; }
+}
+
+function renderFavs() {
+  const f = favs.all(), box = $("#favOut"); if (!box) return;
+  box.innerHTML = f.length ? `<h2 class="sec">${ic("heart")} 찜한 가게 <span class="hint">${f.length}곳 · 이 기기에만 저장</span></h2>
+    <div class="grid c2" id="favList">${f.map((s) => storeCard(s)).join("")}</div>
+    <div class="row" style="margin-top:10px"><button class="btn ghost sm" id="favPlan">${ic("calendar")}찜한 가게로 일정 짜기</button></div>` : "";
+  if (!f.length) return;
+  bindCards(box);
+  $("#favPlan").onclick = () => { pendingFavPlan = true; go("plan"); };
+}
+async function findNearby() {
+  const out = $("#nearOut"), btn = $("#nearBtn");
+  if (!navigator.geolocation) return toast("이 브라우저는 위치를 쓸 수 없어요");
+  btn.disabled = true; btn.innerHTML = `${ic("locate")}위치 확인 중…`;
+  const pos = await new Promise((ok) => navigator.geolocation.getCurrentPosition(ok, () => ok(null), { timeout: 10000, maximumAge: 300000 }));
+  btn.disabled = false; btn.innerHTML = `${ic("locate")}내 주변 3km에서 찾기`;
+  if (!pos) return toast("위치를 받지 못했어요. 브라우저 위치 권한을 확인해 주세요");
+  const { latitude: lat, longitude: lng } = pos.coords;
+  out.innerHTML = `<div class="skeleton" style="height:160px;margin-top:16px"></div>`;
+  try {
+    const r = await api(`/api/nearby?lat=${lat}&lng=${lng}&when=${dateFor(state.day)}&time_slot=${encodeURIComponent(state.slot)}`);
+    out.innerHTML = `<h2 class="sec">${ic("locate")} 내 주변 동네 식당 <span class="hint">${esc(dayLabel(state.day))} ${esc(state.slot)} · 추천 점수 순 · 반경 ${r.radius_km}km</span></h2>
+      ${r.recommendations.length ? `<div class="grid c2">${r.recommendations.slice(0, 6).map((s, i) => storeCard(s, { rank: i + 1 })).join("")}</div>`
+        : `<div class="empty">반경 ${r.radius_km}km 안에 추천할 동네 식당이 없어요. 위에서 동네를 골라 보세요.</div>`}`;
+    bindCards(out); out.scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (e) { out.innerHTML = `<div class="error">${esc(e.message)}</div>`; }
 }
 
 /* ================= 지도 ================= */
@@ -347,7 +396,8 @@ async function drawMap() {
 
 /* ================= 일정 ================= */
 const planState = { start: store.get("pstart", "10:00"), stops: store.get("pstops", "3"), meals: store.get("pmeals", "점심"), kinds: store.get("pkinds", ["관광지", "오름", "해수욕장", "명소"]) };
-let planMap = null, planStops = [], planMeta = {};
+let planMap = null, planStops = [], planMeta = {}, pendingFavPlan = false;
+const favStop = (f) => ({ name: f.name, kind: "식사", lat: f.lat, lng: f.lng, store_id: f.store_id, category: f.category, naver: f.naver, naver_name: f.naver_name, base_level: f.level || "정보 없음", meal: "식사" });
 const KEEP = ["name", "kind", "lat", "lng", "base_level", "level", "stay_min", "poi_id", "store_id", "meal", "category", "naver", "naver_name"];
 const pick = (p) => Object.fromEntries(KEEP.filter((k) => p[k] !== undefined && p[k] !== null).map((k) => [k, p[k]]));
 async function renderPlan() {
@@ -371,7 +421,14 @@ async function renderPlan() {
   }));
   try {
     const q = new URLSearchParams({ regions: state.regions.join(","), when: dateFor(state.day), start: planState.start, stops: planState.stops, meals: planState.meals, kinds: planState.kinds.join(",") });
-    showPlan(await api(`/api/itinerary?${q}`));
+    const r = await api(`/api/itinerary?${q}`);
+    if (pendingFavPlan) {  // 찜한 가게로 식사 자리를 바꿔 넣는다
+      pendingFavPlan = false;
+      const f = favs.all(); let k = 0;
+      planStops = r.itinerary.map(pick).map((p) => (p.kind === "식사" && f[k] ? { ...favStop(f[k++]), meal: p.meal } : p));
+      planMeta = r; if (k) { toast(`찜한 가게 ${k}곳을 식사 자리에 넣었어요`); return recalcPlan(); }
+    }
+    showPlan(r);
   } catch (e) { $("#planOut").innerHTML = `<div class="error">${esc(e.message)}</div>`; }
 }
 function timelineHTML(r, editable) {
@@ -400,7 +457,8 @@ function showPlan(r) {
         <label class="small muted">출발 <input type="time" id="planStart" value="${esc(r.itinerary[0]?.arrive || planState.start)}"></label></div>
       ${timelineHTML(r, true) || `<div class="empty">장소를 추가해 주세요</div>`}
       <div class="row" style="margin-top:14px"><button class="btn ghost sm" id="planAdd">${ic("plus")}장소·식당 추가</button><button class="btn ghost sm" id="planAuto">${ic("refresh")}자동으로 다시 짜기</button>
-        <button class="btn sea sm" id="planAsk" style="margin-left:auto">${ic("chat")}AI에게 다듬기</button></div>
+        <button class="btn ghost sm" id="planShare" style="margin-left:auto">${ic("share")}공유</button>
+        <button class="btn sea sm" id="planAsk">${ic("chat")}AI에게 다듬기</button></div>
       <div id="planCands"></div>
       <div class="source">${(r.notes || []).filter(Boolean).map(esc).join(" · ")}${r.sources?.length ? " · " + esc(r.sources.join(", ")) : ""}</div></div>`;
   drawPlanMap(r);
@@ -412,7 +470,17 @@ function showPlan(r) {
   $("#planStart").onchange = () => recalcPlan();
   $("#planAuto").onclick = () => renderPlan();
   $("#planAdd").onclick = () => showCandidates();
+  $("#planShare").onclick = () => sharePlan(r);
   $("#planAsk").onclick = () => askAI(`이 일정 어때요? 덜 붐비게 바꿀 점이 있으면 알려 주세요: ${r.itinerary.map((p) => `${p.arrive} ${p.name}`).join(" → ")} (${state.regions.join(", ")}, ${dayLabel(state.day)})`);
+}
+async function sharePlan(r) {
+  const head = `제주 하루 일정 · ${(r.regions || state.regions).map(short).join("·")} · ${dayLabel(state.day)}`;
+  const body = r.itinerary.map((p) => `${p.arrive} ${p.name}${p.kind === "식사" ? ` (${p.category || "식사"})` : ` (${p.kind})`}${p.lat != null ? `\n   길찾기 ${routeTo(p.name, p.lat, p.lng)}` : ""}`).join("\n");
+  const text = `${head}\n\n${body}\n\n이동 ${r.total_travel_min}분 · ${r.ends_at} 끝 · 혼잡은 과거 데이터 예측`;
+  try {
+    if (navigator.share) { await navigator.share({ title: head, text }); return; }
+    await navigator.clipboard.writeText(text); toast("일정을 복사했어요. 메신저에 붙여넣으세요");
+  } catch (e) { if (e?.name !== "AbortError") await dialog({ title: "일정 복사", body: "아래 글을 복사하세요", input: text.replace(/\n\s*/g, " / "), cancel: null, ok: "닫기" }); }
 }
 async function recalcPlan() {
   $("#planOut").style.opacity = .55;
@@ -427,10 +495,12 @@ async function showCandidates() {
   const c = await api(`/api/itinerary/candidates?regions=${encodeURIComponent(state.regions.join(","))}&when=${dateFor(state.day)}`);
   const inPlan = new Set(planStops.map((p) => p.name));
   const item = (p, t, i) => inPlan.has(p.name) ? "" : `<button class="cand" data-type="${t}" data-i="${i}"><span class="n">${kdot(p.kind)}<span>${esc(p.name)}</span></span>${LV(p.level)}</button>`;
-  box.innerHTML = `<div class="cands"><div><b class="small">추천 식당</b>${c.restaurants.map((p, i) => item(p, "r", i)).join("") || `<div class="small muted">없음</div>`}</div>
+  const fl = favs.all().map(favStop);
+  box.innerHTML = `<div class="cands">${fl.length ? `<div><b class="small">${ic("heart")} 찜한 가게</b>${fl.map((p, i) => item(p, "f", i)).join("") || `<div class="small muted">모두 일정에 있어요</div>`}</div>` : ""}
+    <div><b class="small">추천 식당</b>${c.restaurants.map((p, i) => item(p, "r", i)).join("") || `<div class="small muted">없음</div>`}</div>
     <div><b class="small">관광 장소 · 덜 붐비는 순</b>${c.pois.map((p, i) => item(p, "p", i)).join("") || `<div class="small muted">없음</div>`}</div></div>`;
   box.querySelectorAll(".cand").forEach((b) => (b.onclick = () => {
-    const p = (b.dataset.type === "r" ? c.restaurants : c.pois)[+b.dataset.i];
+    const p = ({ r: c.restaurants, p: c.pois, f: fl })[b.dataset.type][+b.dataset.i];
     planStops.push(pick(p)); recalcPlan(); toast(`${p.name} 추가했어요`);
   }));
 }
@@ -513,12 +583,38 @@ async function renderStore() {
     ${d.reviews ? `<h2 class="sec">${ic("chat")} 손님 리뷰 요약 <span class="hint">${d.reviews.with_text}건 · 평균 ★${d.reviews.avg_stars} · 2021년 자료</span></h2>
       <div class="grid c2"><div class="card"><h3 style="color:var(--quiet)">${ic("check")} 좋다는 점</h3>${d.reviews.strengths.slice(0, 3).map((x) => `<div style="margin-top:10px"><b>${esc(x.factor)}</b> <span class="small muted">${x.count}건</span>${x.examples.slice(0, 1).map((q) => `<div class="quote">“${esc(q)}”</div>`).join("")}</div>`).join("")}</div>
       <div class="card"><h3 style="color:var(--busy)">${ic("alert")} 아쉽다는 점</h3>${d.reviews.complaints.slice(0, 3).map((x) => `<div style="margin-top:10px"><b>${esc(x.factor)}</b> <span class="small muted">${x.count}건</span>${x.examples.slice(0, 1).map((q) => `<div class="quote">“${esc(q)}”</div>`).join("")}</div>`).join("")}</div></div>` : ""}
+    ${newNearbyHTML(d.new_nearby, s)}
+    <h2 class="sec">${ic("chat")} 받은 리뷰 붙여넣어 분석 <span class="hint">네이버·배달앱 리뷰를 한 줄에 하나씩 · 저장하지 않아요</span></h2>
+    <div class="card"><textarea id="rvText" rows="5" placeholder="예)&#10;국물이 진하고 맛있어요&#10;주차가 좀 불편해요&#10;사장님이 친절하세요"></textarea>
+      <div class="row" style="margin-top:10px"><button class="btn sea sm" id="rvGo">${ic("search")}분석하기</button><span class="small muted">AI 비용 없이 규칙으로 바로 나눠요</span></div>
+      <div id="rvOut"></div></div>
     ${d.drafts.length ? `<h2 class="sec">${ic("image")} 만든 것 <span class="hint">초안·확정 이력</span></h2><div class="grid c2">${d.drafts.slice(0, 6).map((x) => `<div class="card flat small"><div class="row"><b>${esc(x.kind_label)}</b><span class="badge ${x.status === "approved" ? "b-ok" : "b-warn"}">${x.status === "approved" ? "확정" : x.status === "pending" ? "미리보기" : esc(x.status)}</span></div><div class="muted">${esc((x.title || x.body || "").slice(0, 70))}</div></div>`).join("")}</div>` : ""}
     <div class="source">${esc([...(ins.sources || []), ...(nv.sources || [])].filter((x, i, a) => a.indexOf(x) === i).join(", "))}</div>`;
   $("#changeStore").onclick = () => { store.set("myStore", null); renderStore(); };
+  $("#rvGo").onclick = async () => {
+    const text = $("#rvText").value.trim(); if (!text) return toast("리뷰를 붙여넣어 주세요");
+    $("#rvOut").innerHTML = `<div class="skeleton" style="margin-top:12px"></div>`;
+    try {
+      const r = await postJSON("/api/reviews/analyze", { text });
+      const col = (list, title, color, icn) => `<div><h3 style="color:${color}">${ic(icn)} ${title}</h3>${list.length ? list.map((x) => `<div style="margin-top:10px"><b>${esc(x.factor)}</b> <span class="small muted">${x.count}건 · ${esc(x.share)}</span>${x.examples.slice(0, 1).map((q) => `<div class="quote">“${esc(q)}”</div>`).join("")}</div>`).join("") : `<div class="small muted" style="margin-top:8px">없음</div>`}</div>`;
+      $("#rvOut").innerHTML = `<div class="grid c2" style="margin-top:14px">${col(r.strengths, "좋다는 점", "var(--quiet)", "check")}${col(r.complaints, "아쉽다는 점", "var(--busy)", "alert")}</div>
+        <div class="row" style="margin-top:12px"><span class="small muted">리뷰 ${r.reviews}건 분석</span>
+        <button class="btn ghost sm" id="rvAsk" style="margin-left:auto">${ic("megaphone")}이 강점으로 홍보 문구 만들기</button></div>`;
+      $("#rvAsk").onclick = () => askAI(`${s.name} 사장이에요. 손님 리뷰를 붙여넣을게요. 분석해서 강점으로 홍보 문구 만들어 주세요.\n${text.slice(0, 3000)}`);
+    } catch (e) { $("#rvOut").innerHTML = `<div class="error">${esc(e.message)}</div>`; }
+  };
   bindCards(v);
   v.querySelectorAll("[data-photo]").forEach((b) => (b.onclick = () => { pendingPhotoText = `${b.dataset.photo} 메뉴판이에요. 보기 좋게 다시 만들어 주세요`; $("#file").click(); }));
   v.querySelectorAll("[data-today]").forEach((b) => (b.onclick = () => { go("chat"); $("#input").value = `${b.dataset.today} 오늘의 메뉴 이미지 만들어 주세요. 메뉴는 `; $("#input").focus(); autoGrow(); }));
+}
+
+function newNearbyHTML(n, s) {
+  if (!n) return "";
+  const rows = n.stores.slice(0, 8).map((x) => `<div class="nb ${x.category === s.category ? "same" : ""}"><b>${esc(x.name)}</b>
+    <span class="small muted">${esc(x.category || "")} · ${esc(x.open_date)} 개업</span></div>`).join("");
+  return `<h2 class="sec">${ic("sparkles")} 우리 동네 새로 생긴 가게 <span class="hint">${esc(s.emd)} · 최근 1년 · 인허가 ${esc(n.as_of)} 기준</span></h2>
+    <div class="card">${n.stores.length ? `<p class="small" style="margin:0 0 10px">같은 업종(${esc(s.category)}) <b>${n.same_category}곳</b>이 새로 문을 열었어요${n.same_category ? ". 우리 가게만의 강점을 더 드러내 보세요" : ""}</p>
+      <div class="nbs">${rows}</div>` : `<div class="small muted">최근 1년 새로 연 가게가 없어요</div>`}</div>`;
 }
 
 /* ================= 사장님: 만들기 ================= */
