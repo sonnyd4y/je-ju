@@ -8,7 +8,7 @@
 가중치 기본 0.35 / 0.25 / 0.20 / 0.20, priority로 강조할 기준을 고르면 그 기준에 0.15를 더 준다.
 
 영업 신뢰도 (인허가는 폐업 신고를 안 하면 '영업'으로 남으므로)
-  확인됨       네이버에 같은 상호 또는 같은 주소로 등록
+  확인됨       네이버에 같은 상호로 등록 (또는 사장님이 네이버 상호를 직접 연결). 같은 주소에 다른 이름만 있으면 확인으로 치지 않음
   가능성 높음  네이버에 없고 최근 10년 안에 인허가
   확인 필요    네이버에 없고 15년 넘음 → '오래된 가게' 점수 0, 화면에 '방문 전 영업 확인' 표시
   사용자 신고  '문 닫았어요' 신고가 있으면 추천에서 제외 (store_reports)
@@ -90,7 +90,9 @@ def recommend_stores(regions_text: str, category: str = "", when: str = "", time
                 nv = "미등록 후보"
             else:
                 nv = "미확인"
-            verified = nv in ("등록", "다른 상호로 등록")
+            # 같은 주소에 다른 이름만 있는 경우는 폐업 후 다른 가게가 들어왔을 수도 있어 영업 확인으로 치지 않는다
+            # (사장님이 직접 연결한 경우는 status 1이라 '등록')
+            verified = nv == "등록"
             confidence = "확인됨" if verified else "가능성 높음" if years < 10 else "확인 필요" if years >= 15 else "보통"
             if s["store_id"] in reported:
                 continue

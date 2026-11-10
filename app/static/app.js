@@ -65,7 +65,7 @@ const kdot = (kind) => `<span class="kdot" style="background:${(KIND[kind] || KI
 const LV = (lv) => `<span class="badge lv-${esc((lv || "none").replace(/\s/g, ""))}">${esc(lv || "정보 없음")}</span>`;
 const NAVER_BADGE = (n) => n === "미등록 후보" ? `<span class="badge b-hidden">숨은 가게</span>`
   : n === "등록" ? `<span class="badge b-listed">네이버 등록</span>`
-  : n === "다른 상호로 등록" ? `<span class="badge b-listed">네이버엔 다른 상호</span>`
+  : n === "다른 상호로 등록" ? `<span class="badge b-listed" title="같은 주소에 다른 이름으로 네이버에 있어요. 상호를 바꿨거나 다른 가게가 들어왔을 수 있어요">네이버엔 다른 상호</span>`
   : `<span class="badge b-unknown">네이버 ${esc(n || "미확인")}</span>`;
 const naverSearch = (q) => `https://map.naver.com/p/search/${encodeURIComponent(q)}`;
 const routeTo = (name, lat, lng) => `https://map.kakao.com/link/to/${encodeURIComponent(name)},${lat},${lng}`;
@@ -187,7 +187,7 @@ function storeCard(s, opts = {}) {
   return `<div class="card store ${opts.rank ? "ranked" : ""}">
     ${opts.rank ? `<span class="rank">${opts.rank}</span>` : ""}
     <div class="top"><div class="ttl"><div class="name">${esc(s.name)}</div>
-        ${s.naver_name ? `<div class="alias">네이버: ${esc(s.naver_name)}</div>` : ""}
+        ${s.naver_name ? `<div class="alias">${s.naver === "다른 상호로 등록" ? "이 주소 네이버" : "네이버"}: ${esc(s.naver_name)}</div>` : ""}
         <div class="meta">${esc(s.category || "")} · ${esc(s.region || "")}${s.years_open != null ? ` · <span title="인허가일 기준 · 주인이 바뀌어도 이어질 수 있어요">인허가 ${Math.round(s.years_open)}년</span>` : ""}${s.distance_km != null ? ` · <b class="dist">${s.distance_km < 1 ? Math.round(s.distance_km * 1000) + "m" : s.distance_km + "km"} · 걸어서 ${s.walk_min}분</b>` : ""}</div></div>
       ${s.score != null ? `<div class="score" style="--v:${Math.round(s.score * 100)}" title="추천 점수"><b>${Math.round(s.score * 100)}</b><small>점</small></div>` : ""}</div>
     <div class="row">${NAVER_BADGE(s.naver)}${s.open_confidence === "확인됨" ? `<span class="badge b-ok">영업 확인</span>` : s.open_confidence === "확인 필요" ? `<span class="badge b-warn" title="인허가는 폐업 신고를 하지 않으면 영업으로 남아 있어요">방문 전 영업 확인</span>` : ""}</div>
