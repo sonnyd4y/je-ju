@@ -74,7 +74,7 @@ def build_html(d: dict, fmt: str = "feed") -> str:
         eyebrow = "TODAY · 오늘의 메뉴" if d["kind"] == "today" else "MENU · 차림표"
         title, body = d.get("title") or "", d.get("body") or ""
         # 위 머리글·메뉴 목록과 같은 말이면 다시 쓰지 않는다
-        if re.sub(r"\s", "", title) in re.sub(r"\s", "", eyebrow) + "메뉴판차림표":
+        if re.sub(r"\s", "", title.replace(d["store_name"], "")) in re.sub(r"\s", "", eyebrow) + "메뉴판차림표":
             title = ""
         rest = body
         for i in items:
