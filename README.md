@@ -10,7 +10,8 @@
 
 - 데모: **https://jeju-local-agent.web.app** (화면: Firebase Hosting · 서버: Google Cloud Run `https://je-ju-426798142372.asia-northeast3.run.app`)
 - 소스: https://github.com/sonnyd4y/je-ju
-- 문서: [사용자 매뉴얼](docs/사용자매뉴얼.md) · [데이터 활용 명세](docs/데이터활용명세.md) · [개발 진행 기록·결정 사항](개발진행.md) · [개발 계획](개발계획.md)
+- 제출물 안내: [00_먼저_읽어주세요.md](00_먼저_읽어주세요.md) (대회 제출 항목별 위치)
+- 문서: [결과 설명자료](docs/결과설명자료.md) · [사용자 매뉴얼](docs/사용자매뉴얼.md) · [데이터 활용 명세](docs/데이터활용명세.md) · [실행 소스 코드 안내](docs/소스코드_안내.md) · [API 키 발급](docs/API키_발급.md) · [개발 진행 기록·결정 사항](개발진행.md) · [개발 계획](개발계획.md)
 
 ---
 
@@ -80,7 +81,7 @@
 ### 빠른 실행 (처리된 DB가 함께 제공된 경우)
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-lock.txt   # 테스트한 고정 버전 (최소 버전만: requirements.txt)
 python -m playwright install chromium     # 메뉴판·홍보 카드 이미지 그리기용
 copy .env.example .env                    # (Linux: cp) 그 뒤 .env 에 API 키 입력
 uvicorn app.api.main:app --port 8000      # 브라우저에서 http://localhost:8000
@@ -95,7 +96,7 @@ python scripts/chat.py --mode tourist     # 관광객
 
 ### API 키 (`.env`)
 
-[.env.example](.env.example)을 복사해 채웁니다. **`.env`는 제출물·저장소에 넣지 않습니다.**
+[.env.example](.env.example)을 복사해 채웁니다. 발급 방법은 [API 키 발급](docs/API키_발급.md)에 있습니다. **`.env`는 저장소에 넣지 않고**, 제출 zip에는 대회 규칙에 따라 사용 한도를 건 **평가용 AI API 키만** 넣을 수 있습니다 (평가 후 폐기).
 
 | 변수 | 필수 | 없으면 |
 |---|---|---|
@@ -146,7 +147,7 @@ python scripts/eval_agent.py --model claude-haiku-5-5   # 한 모델로 비교
 
 | 대상 | 방법 | 결과 |
 |---|---|---|
-| Agent | 시나리오 15개 자동 평가: 필요한 도구 호출, 승인 전 확정 금지, 근거 표기, 답의 숫자가 도구 결과에 있는지, 메뉴 가격 정확도 | **15/15 통과** (2026-11-10, 사장님 10 · 관광객 4 · 범위 밖 1, [docs/eval_results.json](docs/eval_results.json)). 이전 평가에서 찾은 문제 3건 수정 후 재평가 ([개발진행.md](개발진행.md) 12절). 비용 시나리오당 약 $0.036 |
+| Agent | 시나리오 16개 자동 평가: 필요한 도구 호출, 승인 전 확정 금지, 근거 표기, 답의 숫자가 도구 결과에 있는지, 메뉴 가격 정확도, 여러 차례 대화 | **16/16 통과** (2026-11-13 코드 동결, 사장님 11 · 관광객 4 · 범위 밖 1, [docs/eval_results.json](docs/eval_results.json)). 평가에서 찾은 문제 수정 후 재평가 ([개발진행.md](개발진행.md) 12·14절). 전체 $0.58 |
 | 방문 수요 예측 | 2025-08~2026-02 학습, 2026-03~04 검증 | 오차(MAPE) 18.9% (요일 평균 방식 22.8%), 혼잡 등급 일치 59.4% (36.9%) |
 | 리뷰 감성 | 오픈소스 모델 vs 규칙 | 5,309개 절에서 일치율 90%, 사람 검증 표본 100건 비교 ([docs/검증](docs/검증)) |
 | 네이버 등록 판별 | 표본 50건 사람 확인 | [docs/검증](docs/검증) |
@@ -180,7 +181,7 @@ python scripts/eval_agent.py --model claude-haiku-5-5   # 한 모델로 비교
 
 ## 5. 개인정보·보안
 
-- API 키는 `.env`에만 두고 저장소·제출물·화면·영상에 넣지 않습니다.
+- API 키는 `.env`에만 두고 저장소·화면·영상에 넣지 않습니다. 제출 zip에는 평가용 AI API 키(사용 한도 설정, 평가 후 폐기)만 넣고, 네이버·허브 키는 넣지 않습니다 ([scripts/make_submission.py](scripts/make_submission.py)가 검사).
 - 리뷰 데이터의 작성자 이름·등급·사진 주소는 전처리에서 지웁니다.
 - 사장님이 붙여넣은 리뷰는 분석만 하고 저장하지 않습니다.
 - 내 위치는 버튼을 누를 때 한 번만, **약 100m 단위로 줄여서** 쓰고 저장하지 않습니다.
@@ -215,5 +216,5 @@ app/
 data/       raw (허브 원본, 저장소 제외) · processed (jeju.db, 수요 예측 모델) · sample
 scripts/    수집·전처리·학습 · chat.py (터미널 대화) · eval_agent.py (시나리오 평가)
 tests/      pytest (API 키 없이 실행)
-docs/       사용자 매뉴얼 · 데이터 활용 명세 · 평가 결과 · 검증 표본
+docs/       결과 설명자료 · 사용자 매뉴얼 · 데이터 활용 명세 · 소스 코드 안내 · API 키 발급 · 평가 결과 · 검증 표본 · 화면 캡처
 ```
