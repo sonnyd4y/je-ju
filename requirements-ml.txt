@@ -1,5 +1,5 @@
-# 데이터 준비 단계에서만 필요 (서버 실행에는 불필요)
-# 리뷰 감성 분석: python scripts/build_review_sentiment.py
-# CPU 전용 PyTorch: pip install torch --index-url https://download.pytorch.org/whl/cpu
+# Only needed for data preparation (not for running the server).
+# Review sentiment: python scripts/build_review_sentiment.py
+# CPU-only PyTorch: pip install torch --index-url https://download.pytorch.org/whl/cpu
 torch>=2.3
 transformers>=4.44

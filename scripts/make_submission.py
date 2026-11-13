@@ -19,6 +19,7 @@ import shutil
 import sqlite3
 import subprocess
 import sys
+import tempfile
 import zipfile
 from pathlib import Path
 
@@ -76,8 +77,9 @@ def copy_db(dst: Path) -> None:
 
 
 def stage(with_db: bool) -> Path:
-    if STAGE.exists():
-        shutil.rmtree(STAGE)
+    # 매번 새 임시 폴더에 만든다 (편집기·탐색기가 잡고 있는 이전 폴더를 지우다 실패하지 않게)
+    build = Path(tempfile.mkdtemp(prefix="build_", dir=OUT))
+    STAGE = build / NAME
     for f in tracked_files():
         d = STAGE / f
         d.parent.mkdir(parents=True, exist_ok=True)
@@ -150,7 +152,18 @@ def main() -> None:
         d = stage(with_db)
         secret_check(d)
         make_zip(d, OUT / zname)
-    print("확인용 폴더:", STAGE)
+    # 마지막(DB 포함) 내용을 확인용 폴더로. 이전 폴더를 못 지우면 그대로 두고 알린다
+    shutil.rmtree(STAGE, ignore_errors=True)
+    for b in OUT.glob("build_*"):
+        if b != d.parent:
+            shutil.rmtree(b, ignore_errors=True)
+    if STAGE.exists():
+        print("확인용 폴더를 바꾸지 못했습니다 (열려 있음). 최신 내용:", d)
+    else:
+        STAGE.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(d), str(STAGE))
+        shutil.rmtree(d.parent, ignore_errors=True)
+        print("확인용 폴더:", STAGE)
 
 
 if __name__ == "__main__":

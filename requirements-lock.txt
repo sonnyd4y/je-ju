@@ -1,6 +1,6 @@
-# 평가·재현용 고정 버전 (2026-11-13, Python 3.11.9 에서 테스트 57개·Agent 평가 16개 통과한 환경)
-# 설치: pip install -r requirements-lock.txt
-# 수요 예측 모델(demand_model.joblib)은 scikit-learn 1.9.1로 저장했으므로 같은 버전을 권장합니다.
+# Pinned versions tested on 2026-11-13 (Python 3.11.9): 57 unit tests + 16 agent scenarios passed.
+# Install: pip install -r requirements-lock.txt
+# demand_model.joblib was saved with scikit-learn 1.9.1 - keep the same version.
 pandas==3.0.3
 numpy==2.4.6
 scipy==1.17.1
