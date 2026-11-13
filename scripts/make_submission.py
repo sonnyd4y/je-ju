@@ -102,6 +102,10 @@ def stage(with_db: bool) -> Path:
         bad = sorted(set(eval_env) - EVAL_ENV_ALLOWED)
         if bad:
             print("  평가용.env에서 제출 불가 변수는 뺐습니다:", bad)
+        # 모델을 안 적으면 기본값(Opus)으로 돌아 비용이 커지므로, 실제 서비스·평가와 같은 구성을 기본으로 넣는다
+        for k, v in {"CLAUDE_MODEL": "claude-sonnet-5-5", "CLAUDE_MODEL_OWNER": "claude-sonnet-5-5",
+                     "CLAUDE_MODEL_TOURIST": "claude-haiku-5-5", "CLAUDE_EFFORT": "medium"}.items():
+            eval_env.setdefault(k, v)
         lines = ["# 평가용 키 (사용 한도 설정, 평가 기간 종료 후 폐기). 발급 방법: docs/API키_발급.md"]
         lines += [f"{k}={v}" for k, v in eval_env.items() if k in EVAL_ENV_ALLOWED]
         (STAGE / ".env").write_text("\n".join(lines) + "\n", encoding="utf-8")
