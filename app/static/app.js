@@ -722,7 +722,9 @@ function md(text) {
     if (/^근거\s*[:：]/.test(t)) { src = t.replace(/^근거\s*[:：]\s*/, ""); return false; }
     if (/^※\s*용어/.test(t)) { gls = t; return false; }
     return true;
-  }).join("\n");
+  }).join("\n")
+    // **69%**가, **"문구"**예요 처럼 닫는 ** 앞이 문장부호이고 뒤에 한글이 붙으면 마크다운이 굵게 처리하지 못해 별표가 그대로 보인다
+    .replace(/\*\*([^*\n]+?)\*\*/g, "<strong>$1</strong>");
   return DOMPurify.sanitize(marked.parse(body)) + (gls ? `<span class="gls">${esc(gls)}</span>` : "") + (src ? `<span class="src">근거 · ${esc(src)}</span>` : "");
 }
 const scrollDown = () => { const th = $("#thread"); th.scrollTo({ top: th.scrollHeight, behavior: "smooth" }); };
@@ -837,6 +839,8 @@ async function send(text) {
         if (ev.type === "session") chat.sessionId = ev.session_id;
         else if (ev.type === "text") appendText(turn, ev.text);
         else if (ev.type === "tool_call") {
+          // 도구 호출 직전의 글은 Agent의 중간 메모 ("Proceed to brief." 등). 짧거나 한글이 없으면 지운다 (진행은 단계 칩으로 보임)
+          if (turn.bubble && (turn.text.length < 80 || !/[가-힣]/.test(turn.text))) turn.bubble.remove();
           turn.bubble = null; turn.tools.push(ev.name);
           turn.steps.insertAdjacentHTML("beforeend", `<span class="step" data-id="${esc(ev.id)}"><span class="spin"></span>${esc(STEP_LABEL[ev.name] || ev.name)}</span>`);
           scrollDown();

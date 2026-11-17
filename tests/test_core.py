@@ -355,7 +355,10 @@ def test_demand_model_beats_weekday_average():
 @needs_db
 def test_crowd_with_date_uses_model_or_holiday_rule():
     r = insight.predict_crowd("애월", "11월 14일", "점심")
-    assert r["date"].endswith("-11-14") and r["forecast"][0]["weekday"] == "토요일"
+    # 연도 없는 날짜는 다가오는 11/14로 잡히므로 요일은 그 날짜로 계산해 비교한다
+    import datetime as dt
+    wd = "월화수목금토일"[dt.date.fromisoformat(r["date"]).weekday()] + "요일"
+    assert r["date"].endswith("-11-14") and r["forecast"][0]["weekday"] == wd
     h = insight.predict_crowd("애월", "2026-12-25", "점심")
     assert h["forecast"][0]["weekday"] == "일요일" and "공휴일" in h["day_outlook"]
 
